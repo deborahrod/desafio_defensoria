@@ -35,7 +35,8 @@ public record EstadoConversa(
     public record SecaoResumo(String titulo, List<ItemResumo> itens) {
     }
 
-    public record ItemResumo(String campo, String rotulo, String valor, SituacaoItem situacao) {
+    public record ItemResumo(
+            String campo, String rotulo, String valor, SituacaoItem situacao, ProximaPergunta edicao) {
     }
 
     public enum SituacaoItem {

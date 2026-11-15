@@ -136,12 +136,13 @@ public class MontadorEstado {
 
     private ItemResumo item(Pergunta pergunta, RascunhoCadastro rascunho) {
         var campo = pergunta.campo();
+        var edicao = apresentar(pergunta, rascunho);
         return rascunho.valor(campo)
                 .map(valor -> new ItemResumo(
-                        campo.id(), pergunta.rotulo(), pergunta.exibir(valor, rascunho), SituacaoItem.INFORMADO))
+                        campo.id(), pergunta.rotulo(), pergunta.exibir(valor, rascunho), SituacaoItem.INFORMADO, edicao))
                 .orElseGet(() -> {
                     var motivo = rascunho.ausencia(campo).orElseThrow();
-                    return new ItemResumo(campo.id(), pergunta.rotulo(), descrever(motivo), situacao(motivo));
+                    return new ItemResumo(campo.id(), pergunta.rotulo(), descrever(motivo), situacao(motivo), edicao);
                 });
     }
 
