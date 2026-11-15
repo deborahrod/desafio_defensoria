@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Registra eventos técnicos sem dado pessoal, sem chave e sem conteúdo da conversa. */
 @Service
@@ -21,6 +23,7 @@ public class ServicoEventos {
         this.relogio = relogio;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrar(String tipo, String status, ModoInteracao modo, String modelo, Long duracaoMs) {
         try {
             eventos.save(new EventoTecnico(tipo, status, modo, modelo, duracaoMs, UUID.randomUUID(), relogio.instant()));

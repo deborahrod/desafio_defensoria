@@ -21,6 +21,7 @@ import io.github.deborahrod.defensoria.cadastro.SessaoCadastroRepository;
 import io.github.deborahrod.defensoria.cadastro.SessaoInexistenteException;
 import io.github.deborahrod.defensoria.cadastro.SituacaoCpf;
 import io.github.deborahrod.defensoria.cadastro.SituacaoMoradia;
+import io.github.deborahrod.defensoria.integracao.ServicoEventos;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -30,6 +31,8 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Grava o cadastro de uma vez: pessoa, declaração e confirmação na mesma transação.
@@ -49,6 +52,7 @@ public class ServicoConfirmacao {
     private final ConfirmacaoCadastroRepository confirmacoes;
     private final RoteiroCadastro roteiro;
     private final MontadorEstado montador;
+    private final ServicoEventos eventos;
     private final Clock relogio;
 
     public ServicoConfirmacao(
@@ -60,6 +64,7 @@ public class ServicoConfirmacao {
             ConfirmacaoCadastroRepository confirmacoes,
             RoteiroCadastro roteiro,
             MontadorEstado montador,
+            ServicoEventos eventos,
             Clock relogio) {
         this.sessoes = sessoes;
         this.rascunhos = rascunhos;
@@ -69,6 +74,7 @@ public class ServicoConfirmacao {
         this.confirmacoes = confirmacoes;
         this.roteiro = roteiro;
         this.montador = montador;
+        this.eventos = eventos;
         this.relogio = relogio;
     }
 
@@ -105,14 +111,26 @@ public class ServicoConfirmacao {
 
         sessao.mudarPara(EstadoSessao.CONFIRMADO);
         rascunhos.delete(rascunho);
+        // O evento só é registrado depois do commit: falha na transação não deixa rastro de sucesso.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventos.registrar("CONFIRMACAO", "SUCESSO", null, null, null);
+            }
+        });
         return Comprovante.de(confirmacao);
+    }
+
+    private CadastroConflitanteException conflito() {
+        eventos.registrar("CONFIRMACAO", "CONFLITO_CADASTRAL", null, null, null);
+        return new CadastroConflitanteException();
     }
 
     private PessoaCadastro gravarPessoa(RascunhoCadastro rascunho, Instant agora) {
         var cpf = rascunho.valor(CPF).orElse(null);
         // A checagem prévia evita o erro comum; o índice único cobre a corrida entre duas sessões.
         if (cpf != null && pessoas.existsByCpf(cpf)) {
-            throw new CadastroConflitanteException();
+            throw conflito();
         }
         var campos = roteiro.aplicaveis(rascunho).map(pergunta -> pergunta.campo())
                 .filter(campo -> !CAMPOS_SOCIOECONOMICOS.contains(campo))
@@ -130,7 +148,7 @@ public class ServicoConfirmacao {
         try {
             return pessoas.saveAndFlush(pessoa);
         } catch (DataIntegrityViolationException e) {
-            throw new CadastroConflitanteException();
+            throw conflito();
         }
     }
 
