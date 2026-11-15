@@ -5,6 +5,7 @@ import io.github.deborahrod.defensoria.cadastro.SessaoExpiradaException;
 import io.github.deborahrod.defensoria.cadastro.SessaoInexistenteException;
 import io.github.deborahrod.defensoria.conversa.CadastroConflitanteException;
 import io.github.deborahrod.defensoria.conversa.EstadoInvalidoException;
+import io.github.deborahrod.defensoria.conversa.LimiteExcedidoException;
 import io.github.deborahrod.defensoria.conversa.RespostaInvalidaException;
 import io.github.deborahrod.defensoria.conversa.VersaoDesatualizadaException;
 import org.slf4j.Logger;
@@ -57,6 +58,15 @@ class TratadorErros extends ResponseEntityExceptionHandler {
     ResponseEntity<ErroResposta> versaoDesatualizada() {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta(
                 "VERSAO_DESATUALIZADA", "O cadastro mudou desde a última tela. Atualize para ver o estado atual."));
+    }
+
+    @ExceptionHandler(LimiteExcedidoException.class)
+    ResponseEntity<ErroResposta> limiteExcedido(LimiteExcedidoException erro) {
+        var resposta = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+        if (erro.getEsperaEmSegundos() != null) {
+            resposta.header(HttpHeaders.RETRY_AFTER, String.valueOf(erro.getEsperaEmSegundos()));
+        }
+        return resposta.body(new ErroResposta("LIMITE_EXCEDIDO", erro.getMessage()));
     }
 
     @ExceptionHandler(CadastroConflitanteException.class)

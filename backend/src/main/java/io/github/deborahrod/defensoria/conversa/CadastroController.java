@@ -94,7 +94,7 @@ class CadastroController {
     @PatchMapping("/campos/{campo}")
     EstadoConversa corrigir(
             SessaoCadastro sessao, @PathVariable String campo, @Valid @RequestBody CorrecaoRequest corpo) {
-        return conversa.corrigir(sessao.getId(), campo, corpo.versao(), corpo.entrada());
+        return respostas.corrigir(sessao.getId(), campo, corpo.versao(), corpo.entrada());
     }
 
     @GetMapping("/revisao")

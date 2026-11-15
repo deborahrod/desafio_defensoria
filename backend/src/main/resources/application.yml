@@ -22,6 +22,11 @@ cadastro:
     retencao-encerradas: 24h
   cors:
     origens: ${CORS_ORIGENS:}
+  limites:
+    respostas-por-sessao: ${LIMITE_RESPOSTAS_POR_SESSAO:60}
+    respostas-por-minuto: ${LIMITE_RESPOSTAS_POR_MINUTO:10}
+    requisicoes-por-origem-por-minuto: ${LIMITE_REQUISICOES_POR_ORIGEM_POR_MINUTO:120}
+    confiar-em-proxy: ${LIMITES_CONFIAR_EM_PROXY:false}
   llm:
     api-key: ${LLM_API_KEY:}
     base-url: ${LLM_BASE_URL:https://api.mistral.ai/v1}
