@@ -8,76 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.jayway.jsonpath.JsonPath;
 import io.github.deborahrod.defensoria.Navegador;
 import io.github.deborahrod.defensoria.TesteIntegracao;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
 class CadastroApiTest extends TesteIntegracao {
 
-    /** Um participante da API: guarda a versão devolvida para enviar no próximo turno. */
-    private static final class Participante {
-
-        final Navegador navegador;
-        int versao;
-
-        Participante(Navegador navegador) {
-            this.navegador = navegador;
-        }
-
-        ResultActions iniciar() throws Exception {
-            var resposta = navegador.iniciarSessao();
-            guardar(resposta);
-            return resposta;
-        }
-
-        ResultActions responderOpcao(String opcao) throws Exception {
-            return responder(UUID.randomUUID(), versao, "null", "\"" + opcao + "\"");
-        }
-
-        ResultActions responderValor(String valor) throws Exception {
-            return responder(UUID.randomUUID(), versao, "\"" + valor + "\"", "null");
-        }
-
-        ResultActions responder(UUID mensagemId, int versaoEnviada, String valor, String opcao) throws Exception {
-            var json = """
-                    {"mensagemId":"%s","versao":%d,"valor":%s,"opcao":%s}""".formatted(mensagemId, versaoEnviada, valor, opcao);
-            var resposta = navegador.post("/respostas", json);
-            guardar(resposta);
-            return resposta;
-        }
-
-        ResultActions corrigir(String campo, String valor, String opcao) throws Exception {
-            var json = """
-                    {"versao":%d,"valor":%s,"opcao":%s}""".formatted(versao, valor, opcao);
-            var resposta = navegador.patch("/campos/" + campo, json);
-            guardar(resposta);
-            return resposta;
-        }
-
-        void responderTudo(List<RespostaEntrada> respostas) throws Exception {
-            for (var resposta : respostas) {
-                if (resposta.opcao() != null) {
-                    responderOpcao(resposta.opcao()).andExpect(status().isOk());
-                } else {
-                    responderValor(resposta.valor()).andExpect(status().isOk());
-                }
-            }
-        }
-
-        private void guardar(ResultActions resposta) throws Exception {
-            var corpo = resposta.andReturn().getResponse().getContentAsString();
-            if (resposta.andReturn().getResponse().getStatus() < 300 && corpo.contains("\"versao\"")) {
-                versao = JsonPath.read(corpo, "$.versao");
-            }
-        }
-    }
-
-    private Participante novo() throws Exception {
-        var participante = new Participante(novoNavegador());
+    private ParticipanteApi novo() throws Exception {
+        var participante = new ParticipanteApi(novoNavegador());
         participante.iniciar().andExpect(status().isCreated());
         return participante;
     }
