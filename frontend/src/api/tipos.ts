@@ -37,6 +37,7 @@ export interface ItemResumo {
   rotulo: string
   valor: string
   situacao: 'INFORMADO' | 'NAO_INFORMADO' | 'OPCIONAL_NAO_PREENCHIDO'
+  edicao: ProximaPergunta
 }
 
 export interface SecaoResumo {

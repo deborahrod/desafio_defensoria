@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
-import { encerrarSessao, estadoAtual, iniciarSessao, responder } from '../api/cadastro.ts'
+import { confirmarCadastro, corrigirCampo, encerrarSessao, estadoAtual, iniciarSessao, responder } from '../api/cadastro.ts'
 import { ErroApi } from '../api/cliente.ts'
 import { novoIdentificador } from '../api/identificador.ts'
-import type { Entrada, EstadoConversa } from '../api/tipos.ts'
+import type { Entrada, EstadoConversa, ItemResumo } from '../api/tipos.ts'
 
 export interface Mensagem {
   id: number
@@ -11,22 +11,17 @@ export interface Mensagem {
   erro?: boolean
 }
 
-interface Pendente {
-  mensagemId: string
-  versao: number
-  entrada: Entrada
-  rotulo: string
-}
-
-/** Orquestra a conversa: um envio por vez, nova tentativa com o mesmo mensagemId. */
+/** Orquestra a conversa: uma operação por vez, nova tentativa idempotente após falha de rede. */
 export function useConversa() {
   const [estado, setEstado] = useState<EstadoConversa | null>(null)
   const [transcricao, setTranscricao] = useState<Mensagem[]>([])
   const [enviando, setEnviando] = useState(false)
   const [falha, setFalha] = useState<string | null>(null)
+  const [recusa, setRecusa] = useState<string | null>(null)
   const [encerrada, setEncerrada] = useState<string | null>(null)
   const emVoo = useRef(false)
-  const pendente = useRef<Pendente | null>(null)
+  const tentativa = useRef<(() => Promise<void>) | null>(null)
+  const chaveConfirmacao = useRef<{ versao: number; chave: string } | null>(null)
   const proximoId = useRef(1)
 
   const acrescentar = useCallback((novas: Omit<Mensagem, 'id'>[]) => {
@@ -45,33 +40,21 @@ export function useConversa() {
     [acrescentar],
   )
 
-  const protegido = useCallback(async (acao: () => Promise<void>) => {
-    if (emVoo.current) return
-    emVoo.current = true
-    setEnviando(true)
-    setFalha(null)
-    try {
-      await acao()
-    } finally {
-      emVoo.current = false
-      setEnviando(false)
-    }
-  }, [])
-
   const tratarErro = useCallback(
-    async (erro: unknown) => {
+    async (erro: unknown, emRevisao: boolean) => {
       if (!(erro instanceof ErroApi)) throw erro
-      if (erro.status === 400) {
-        pendente.current = null
-        acrescentar([{ autor: 'sistema', texto: erro.message, erro: true }])
-      } else if (erro.status === 409) {
-        pendente.current = null
+      if (erro.status === 401 || erro.status === 410) {
+        tentativa.current = null
+        setEncerrada(erro.message)
+      } else if (erro.codigo === 'VERSAO_DESATUALIZADA') {
+        tentativa.current = null
         const atual = await estadoAtual().catch(() => null)
         if (atual) setEstado(atual)
-        acrescentar([{ autor: 'sistema', texto: 'O cadastro foi atualizado. Responda de novo à pergunta atual.', erro: true }])
-      } else if (erro.status === 401 || erro.status === 410) {
-        pendente.current = null
-        setEncerrada(erro.message)
+        setRecusa('O cadastro foi atualizado em outra tela. Confira os dados e tente de novo.')
+      } else if (erro.status === 400 || erro.status === 409) {
+        tentativa.current = null
+        if (emRevisao || erro.status === 409) setRecusa(erro.message)
+        else acrescentar([{ autor: 'sistema', texto: erro.message, erro: true }])
       } else {
         // Sem conexão, 429 ou 5xx: o rascunho está preservado e a pessoa pode tentar de novo.
         setFalha(erro.message)
@@ -80,59 +63,98 @@ export function useConversa() {
     [acrescentar],
   )
 
-  const iniciar = useCallback(
-    () =>
-      protegido(async () => {
-        try {
-          setEncerrada(null)
-          setTranscricao([])
-          receber(await iniciarSessao())
-        } catch (erro) {
-          await tratarErro(erro)
-        }
-      }),
-    [protegido, receber, tratarErro],
+  const executar = useCallback(
+    async (acao: () => Promise<void>, emRevisao = false) => {
+      if (emVoo.current) return
+      emVoo.current = true
+      setEnviando(true)
+      setFalha(null)
+      setRecusa(null)
+      try {
+        await acao()
+      } catch (erro) {
+        await tratarErro(erro, emRevisao)
+      } finally {
+        emVoo.current = false
+        setEnviando(false)
+      }
+    },
+    [tratarErro],
   )
 
-  const executar = useCallback(
-    (item: Pendente) =>
-      protegido(async () => {
-        try {
-          const novo = await responder(item.mensagemId, item.versao, item.entrada)
-          pendente.current = null
-          receber(novo, [{ autor: 'pessoa', texto: item.rotulo }])
-        } catch (erro) {
-          await tratarErro(erro)
-        }
+  const iniciar = useCallback(
+    () =>
+      executar(async () => {
+        setEncerrada(null)
+        setTranscricao([])
+        receber(await iniciarSessao())
       }),
-    [protegido, receber, tratarErro],
+    [executar, receber],
   )
 
   const enviar = useCallback(
     (entrada: Entrada, rotulo: string) => {
       if (!estado || emVoo.current) return Promise.resolve()
-      const item = { mensagemId: novoIdentificador(), versao: estado.versao, entrada, rotulo }
-      pendente.current = item
-      return executar(item)
+      const mensagemId = novoIdentificador()
+      const versao = estado.versao
+      // Nova tentativa reaproveita o mesmo mensagemId, então o servidor não processa duas vezes.
+      const acao = async () => {
+        const novo = await responder(mensagemId, versao, entrada)
+        tentativa.current = null
+        receber(novo, [{ autor: 'pessoa', texto: rotulo }])
+      }
+      tentativa.current = () => executar(acao)
+      return executar(acao)
     },
-    [estado, executar],
+    [estado, executar, receber],
   )
 
-  const tentarNovamente = useCallback(() => {
-    return pendente.current ? executar(pendente.current) : Promise.resolve()
-  }, [executar])
+  const corrigir = useCallback(
+    (item: ItemResumo, entrada: Entrada, rotulo: string) => {
+      if (!estado || emVoo.current) return Promise.resolve()
+      const versao = estado.versao
+      const acao = async () => {
+        const novo = await corrigirCampo(item.campo, versao, entrada)
+        tentativa.current = null
+        receber(novo, [{ autor: 'pessoa', texto: `${item.rotulo}: ${rotulo}` }])
+      }
+      tentativa.current = () => executar(acao, true)
+      return executar(acao, true)
+    },
+    [estado, executar, receber],
+  )
+
+  const confirmar = useCallback(() => {
+    if (!estado || emVoo.current) return Promise.resolve()
+    const versao = estado.versao
+    // A chave vale para a versão revisada: repetir o pedido nunca grava duas vezes.
+    if (chaveConfirmacao.current?.versao !== versao) {
+      chaveConfirmacao.current = { versao, chave: novoIdentificador() }
+    }
+    const { chave } = chaveConfirmacao.current
+    const acao = async () => {
+      const novo = await confirmarCadastro(versao, chave)
+      tentativa.current = null
+      setEstado(novo)
+    }
+    tentativa.current = () => executar(acao, true)
+    return executar(acao, true)
+  }, [estado, executar])
+
+  const tentarNovamente = useCallback(() => tentativa.current?.() ?? Promise.resolve(), [])
 
   const cancelar = useCallback(
     () =>
-      protegido(async () => {
+      executar(async () => {
         await encerrarSessao().catch(() => undefined)
-        pendente.current = null
+        tentativa.current = null
+        chaveConfirmacao.current = null
         setEstado(null)
         setTranscricao([])
         setEncerrada(null)
       }),
-    [protegido],
+    [executar],
   )
 
-  return { estado, transcricao, enviando, falha, encerrada, iniciar, enviar, tentarNovamente, cancelar }
+  return { estado, transcricao, enviando, falha, recusa, encerrada, iniciar, enviar, corrigir, confirmar, tentarNovamente, cancelar }
 }
