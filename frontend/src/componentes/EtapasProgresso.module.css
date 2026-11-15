@@ -1,0 +1,6 @@
+.etapas {
+  padding: var(--espaco-3) var(--espaco-2);
+  border: 1px solid var(--cor-fundo-faixa);
+  border-radius: var(--raio-botao);
+  background: var(--cor-fundo);
+}

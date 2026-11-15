@@ -6,6 +6,8 @@ interface Props {
   pergunta: ProximaPergunta
   desabilitado: boolean
   aoEnviar: (entrada: Entrada, rotulo: string) => void
+  /** Nome do campo para leitores de tela. Distingue o campo de edição do campo da conversa. */
+  rotuloDoCampo?: string
 }
 
 const ATRIBUTOS: Partial<Record<TipoEntrada, React.InputHTMLAttributes<HTMLInputElement>>> = {
@@ -25,7 +27,7 @@ function exibir(tipo: TipoEntrada, valor: string): string {
 }
 
 /** Entrada adequada ao tipo da pergunta. Os botões de ausência valem para qualquer tipo. */
-export default function EntradaConversa({ pergunta, desabilitado, aoEnviar }: Props) {
+export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotuloDoCampo = 'Sua resposta' }: Props) {
   const [valor, setValor] = useState('')
   const raiz = useRef<HTMLDivElement>(null)
   const idCampo = useId()
@@ -74,7 +76,7 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar }: Pr
       {!porBotoes && (
         <form className={estilos.formulario} onSubmit={enviarValor}>
           <label htmlFor={idCampo} className={estilos.rotulo}>
-            Sua resposta
+            {rotuloDoCampo}
           </label>
           <div className={estilos.linha}>
             {porLista ? (

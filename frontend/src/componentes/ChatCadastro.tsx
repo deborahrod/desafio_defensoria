@@ -1,37 +1,20 @@
 import { useState } from 'react'
-import { useConversa } from '../conversa/useConversa.ts'
+import type { useConversa } from '../conversa/useConversa.ts'
 import estilos from './ChatCadastro.module.css'
 import ComprovanteCadastro from './ComprovanteCadastro.tsx'
 import EntradaConversa from './EntradaConversa.tsx'
-import ResumoCadastro from './ResumoCadastro.tsx'
+import RevisaoFinal from './RevisaoFinal.tsx'
 
-export default function ChatCadastro() {
-  const conversa = useConversa()
+/** Coluna da conversa: mensagens, a pergunta atual (ou a revisão final) e os avisos de envio. */
+export default function ChatCadastro({ conversa }: { conversa: ReturnType<typeof useConversa> }) {
   const { estado, transcricao, enviando, falha, recusa, encerrada } = conversa
   const [confirmandoSaida, setConfirmandoSaida] = useState(false)
-
-  if (!estado && !encerrada) {
-    return (
-      <div className={estilos.inicio}>
-        <button type="button" className={estilos.comecar} disabled={enviando} onClick={conversa.iniciar}>
-          Começar
-        </button>
-        {falha && <p role="alert" className={estilos.erro}>{falha}</p>}
-      </div>
-    )
-  }
 
   const pergunta = estado?.proximaPergunta
   const confirmado = estado?.estado === 'CONFIRMADO' && estado.comprovante
 
   return (
     <section className={estilos.chat} aria-label="Conversa do cadastro">
-      {estado?.progresso && !confirmado && (
-        <p className={estilos.progresso}>
-          Etapa {estado.progresso.etapa} de {estado.progresso.total}: {estado.progresso.secao}
-        </p>
-      )}
-
       {estado && !confirmado && (
         <p className={estilos.modo}>
           {estado.modoInteracao === 'ASSISTIDO_POR_IA'
@@ -60,7 +43,7 @@ export default function ChatCadastro() {
       ) : confirmado ? (
         <ComprovanteCadastro comprovante={estado.comprovante!} desabilitado={enviando} aoEncerrar={conversa.cancelar} />
       ) : estado?.estado === 'EM_REVISAO' ? (
-        <ResumoCadastro estado={estado} desabilitado={enviando} aoCorrigir={conversa.corrigir} aoConfirmar={conversa.confirmar} />
+        <RevisaoFinal estado={estado} desabilitado={enviando} aoConfirmar={conversa.confirmar} />
       ) : pergunta ? (
         <EntradaConversa key={`${pergunta.campo}-${estado?.versao}`} pergunta={pergunta} desabilitado={enviando} aoEnviar={conversa.enviar} />
       ) : null}

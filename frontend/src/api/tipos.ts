@@ -56,7 +56,7 @@ export interface EstadoConversa {
   modoInteracao: 'ASSISTIDO_POR_IA' | 'ESTRUTURADO'
   versao: number
   proximaPergunta: ProximaPergunta | null
-  progresso: { etapa: number; total: number; secao: string } | null
+  progresso: { etapa: number; total: number; secao: string; secoes: string[] } | null
   resumo: SecaoResumo[]
   pendencias: string[]
   avisos: string[]

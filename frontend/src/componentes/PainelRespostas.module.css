@@ -1,0 +1,148 @@
+.painel {
+  border: 1px solid var(--cor-borda);
+  border-top: 4px solid var(--cor-verde);
+  border-radius: var(--raio-botao);
+  background: var(--cor-fundo);
+  box-shadow: var(--sombra-suave);
+}
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-3);
+  padding: var(--espaco-3) var(--espaco-4);
+}
+
+.titulo {
+  font-size: var(--texto-medio);
+}
+
+.alternar {
+  min-height: 2.5rem;
+  padding: 0 var(--espaco-3);
+  border: 1px solid var(--cor-verde);
+  border-radius: var(--raio-botao);
+  background: var(--cor-branco);
+  color: var(--cor-verde);
+  font-weight: var(--peso-medio);
+  cursor: pointer;
+}
+
+/* No celular o painel fica recolhido até a pessoa abrir. */
+.conteudo {
+  display: none;
+  padding: 0 var(--espaco-4) var(--espaco-4);
+}
+
+.painel[data-aberto='true'] .conteudo {
+  display: block;
+}
+
+.vazio {
+  font-size: var(--texto-pequeno);
+}
+
+.secao {
+  margin-top: var(--espaco-3);
+}
+
+.nomeSecao {
+  margin-bottom: var(--espaco-2);
+  padding-bottom: var(--espaco-1);
+  border-bottom: 1px solid var(--cor-fundo-faixa);
+  font-size: var(--texto-base);
+}
+
+.itens {
+  display: grid;
+  gap: var(--espaco-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: var(--espaco-1) var(--espaco-2);
+}
+
+.dado {
+  margin: 0;
+}
+
+.rotulo {
+  font-size: var(--texto-pequeno);
+  font-weight: var(--peso-medio);
+}
+
+.valor {
+  margin: 0;
+  color: var(--cor-texto-forte);
+  overflow-wrap: anywhere;
+}
+
+.item[data-situacao='NAO_INFORMADO'] .valor,
+.item[data-situacao='OPCIONAL_NAO_PREENCHIDO'] .valor {
+  font-style: italic;
+}
+
+.editar,
+.cancelar {
+  min-height: 2.5rem;
+  padding: 0 var(--espaco-3);
+  border: 1px solid var(--cor-verde);
+  border-radius: var(--raio-botao);
+  background: var(--cor-branco);
+  color: var(--cor-verde);
+  font-weight: var(--peso-medio);
+  cursor: pointer;
+}
+
+.editar:hover:not(:disabled) {
+  background: var(--cor-verde-claro-suave);
+}
+
+.editar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cancelar {
+  justify-self: start;
+  border-color: var(--cor-texto);
+  color: var(--cor-texto-forte);
+}
+
+.edicao {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--espaco-3);
+  padding: var(--espaco-3);
+  background: var(--cor-fundo-suave);
+  border-radius: var(--raio-botao);
+}
+
+.pergunta {
+  color: var(--cor-texto-forte);
+  font-weight: var(--peso-medio);
+}
+
+@media (min-width: 64rem) {
+  .painel {
+    position: sticky;
+    top: var(--espaco-4);
+    max-height: calc(100vh - 2 * var(--espaco-4));
+    overflow-y: auto;
+  }
+
+  .alternar {
+    display: none;
+  }
+
+  .conteudo {
+    display: block;
+  }
+}

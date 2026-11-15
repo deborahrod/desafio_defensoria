@@ -1,0 +1,18 @@
+.area {
+  display: grid;
+  gap: var(--espaco-4);
+}
+
+.colunas,
+.coluna {
+  display: grid;
+  gap: var(--espaco-4);
+  align-items: start;
+}
+
+/* Em telas largas o painel de respostas fica ao lado da conversa. */
+@media (min-width: 64rem) {
+  .colunas {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+}
