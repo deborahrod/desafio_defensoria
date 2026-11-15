@@ -135,6 +135,15 @@ A IA é um **interpretador de respostas**, não o controlador da aplicação. El
 - **Falhas:** sem chave, 401/403, créditos, 429, timeout, 5xx, JSON inválido ou truncado: nenhuma nova tentativa automática, o modo passa a `ESTRUTURADO`, o rascunho é preservado e a tela avisa. Nada é simulado como resposta do modelo.
 - **Segredo:** a chave existe só no processo da API. Não há variável `VITE_` com segredo, ela não aparece no pacote do frontend, nas respostas da API, nos logs nem na representação textual da configuração (há testes para cada ponto).
 
+### Provedores testados
+
+| Provedor | `LLM_BASE_URL` | `LLM_MODEL` | Situação |
+|---|---|---|---|
+| Mistral (padrão) | `https://api.mistral.ai/v1` | `mistral-small-latest` | Padrão do projeto, mesmo contrato |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash-lite` | Chamada real validada (resposta em cerca de 1 a 2 segundos) |
+
+Escolha modelos sem raciocínio estendido: eles gastam os 350 tokens de saída pensando e a resposta cortada é descartada. Os nomes de modelo mudam com o tempo (o `gemini-2.0-flash`, por exemplo, deixou de existir): confira a lista de modelos do provedor.
+
 ### Teste de chamada real
 
 `InterpretadorRealTest` chama o provedor configurado com texto fictício e só roda quando `LLM_API_KEY` está no ambiente. Para executá-lo carregue o `.env` no shell **apenas para esse teste**, porque os demais testes esperam o ambiente sem chave:
@@ -206,7 +215,7 @@ O teste de ponta a ponta do fluxo, da API até o banco, está em `ConfirmacaoTes
 - **Representação:** o vínculo é apenas declarado, sem validação de poderes ou documentos.
 - **Limites em memória.** O limite por sessão, por minuto e por origem vale para uma única instância da aplicação. Com várias instâncias seria preciso estado compartilhado. Os números são hipóteses iniciais, não capacidade medida.
 - **Origem do acesso.** O limite por origem só usa `X-Forwarded-For` quando `LIMITES_CONFIAR_EM_PROXY=true`, o que o Compose ativa por estar atrás do nginx. Exponha a API diretamente apenas com essa opção desligada.
-- **Provedor de IA.** Antes de qualquer uso real é preciso avaliar finalidade, contrato, retenção e localização do processamento. Planos gratuitos podem usar as entradas para treinamento e endpoints `http` trafegam a chave e o texto sem criptografia: use apenas dados fictícios. A integração real foi validada por testes com servidor simulado. A chamada ao provedor depende de chave e rede do ambiente de quem executa, e o teste correspondente fica pulado quando não há chave.
+- **Provedor de IA.** Antes de qualquer uso real é preciso avaliar finalidade, contrato, retenção e localização do processamento. Planos gratuitos podem usar as entradas para treinamento e endpoints `http` trafegam a chave e o texto sem criptografia: use apenas dados fictícios. A integração foi validada por testes com servidor simulado e por uma chamada real ao Gemini (teste `InterpretadorRealTest` e fluxo completo pela interface). Sem chave configurada o teste de chamada real fica pulado.
 - **Anexos e documentos:** sem upload nem conferência documental. O checklist informativo de documentos, previsto como item opcional da ata, não foi implementado.
 - **Dados fictícios.** Não use dados de pessoas reais. O README e a tela deixam claro que o comprovante do protótipo não tem validade oficial.
 
