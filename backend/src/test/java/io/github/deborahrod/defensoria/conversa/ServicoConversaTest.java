@@ -116,7 +116,7 @@ class ServicoConversaTest extends TesteIntegracao {
 
         assertThatThrownBy(() -> responder(valor("529.982.247-26")))
                 .isInstanceOfSatisfying(RespostaInvalidaException.class,
-                        erro -> assertThat(erro.getCampo()).isEqualTo(Campo.CPF));
+                        erro -> assertThat(erro.getCampo()).isEqualTo(Campo.CPF.id()));
 
         var depois = conversa.estadoAtual(sessaoId);
         assertThat(depois.versao()).isEqualTo(antes.versao());
