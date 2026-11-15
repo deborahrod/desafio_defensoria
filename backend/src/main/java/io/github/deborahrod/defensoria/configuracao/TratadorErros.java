@@ -3,6 +3,7 @@ package io.github.deborahrod.defensoria.configuracao;
 import io.github.deborahrod.defensoria.cadastro.CookieSessao;
 import io.github.deborahrod.defensoria.cadastro.SessaoExpiradaException;
 import io.github.deborahrod.defensoria.cadastro.SessaoInexistenteException;
+import io.github.deborahrod.defensoria.conversa.CadastroConflitanteException;
 import io.github.deborahrod.defensoria.conversa.EstadoInvalidoException;
 import io.github.deborahrod.defensoria.conversa.RespostaInvalidaException;
 import io.github.deborahrod.defensoria.conversa.VersaoDesatualizadaException;
@@ -56,6 +57,15 @@ class TratadorErros extends ResponseEntityExceptionHandler {
     ResponseEntity<ErroResposta> versaoDesatualizada() {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta(
                 "VERSAO_DESATUALIZADA", "O cadastro mudou desde a última tela. Atualize para ver o estado atual."));
+    }
+
+    @ExceptionHandler(CadastroConflitanteException.class)
+    ResponseEntity<ErroResposta> cadastroConflitante() {
+        // Resposta genérica de propósito: não revela se já existe cadastro com esses dados.
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta(
+                "CADASTRO_CONFLITANTE",
+                "Não foi possível concluir a gravação deste cadastro e nada foi gravado. "
+                        + "Procure o atendimento da Defensoria para continuar com ajuda de uma pessoa."));
     }
 
     @ExceptionHandler(EstadoInvalidoException.class)

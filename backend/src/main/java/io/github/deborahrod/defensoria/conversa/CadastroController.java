@@ -47,13 +47,19 @@ class CadastroController {
         }
     }
 
+    record ConfirmacaoRequest(@NotNull @PositiveOrZero Integer versaoRevisada, @NotNull UUID chaveIdempotencia) {
+    }
+
     private final ServicoSessao sessoes;
     private final ServicoConversa conversa;
+    private final ServicoConfirmacao confirmacao;
     private final CookieSessao cookies;
 
-    CadastroController(ServicoSessao sessoes, ServicoConversa conversa, CookieSessao cookies) {
+    CadastroController(
+            ServicoSessao sessoes, ServicoConversa conversa, ServicoConfirmacao confirmacao, CookieSessao cookies) {
         this.sessoes = sessoes;
         this.conversa = conversa;
+        this.confirmacao = confirmacao;
         this.cookies = cookies;
     }
 
@@ -88,6 +94,13 @@ class CadastroController {
     @GetMapping("/revisao")
     Revisao revisao(SessaoCadastro sessao) {
         return conversa.revisao(sessao.getId());
+    }
+
+    @PostMapping("/confirmacao")
+    EstadoConversa confirmar(SessaoCadastro sessao, @Valid @RequestBody ConfirmacaoRequest corpo) {
+        confirmacao.confirmar(sessao.getId(), corpo.versaoRevisada(), corpo.chaveIdempotencia());
+        // Lido depois do commit: o comprovante só aparece se a gravação foi concluída.
+        return conversa.estadoAtual(sessao.getId());
     }
 
     @DeleteMapping("/sessao")
