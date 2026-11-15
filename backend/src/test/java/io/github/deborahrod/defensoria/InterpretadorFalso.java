@@ -10,6 +10,7 @@ import io.github.deborahrod.defensoria.integracao.ResultadoInterpretacao.Operaca
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
 /** Interpretador programável dos testes. Chamada não programada é erro, para flagrar uso indevido. */
@@ -34,6 +35,19 @@ public class InterpretadorFalso implements InterpretadorRespostas {
         }
         var resultado = new ResultadoInterpretacao(operacao, candidatos, precisaEsclarecimento);
         comportamento = pedido -> resultado;
+    }
+
+    /** A chamada fica parada até o teste liberar, para simular um provedor lento. */
+    public void bloquearAte(CountDownLatch entrou, CountDownLatch liberar, ResultadoInterpretacao resultado) {
+        comportamento = pedido -> {
+            entrou.countDown();
+            try {
+                liberar.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return resultado;
+        };
     }
 
     public void falharCom(Categoria categoria) {

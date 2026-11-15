@@ -17,7 +17,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
 /** Base dos testes que precisam do banco: um único PostgreSQL para toda a execução. */
 @SpringBootTest(
         webEnvironment = WebEnvironment.RANDOM_PORT,
-        properties = "cadastro.cors.origens=http://localhost:5173")
+        properties = {
+            "cadastro.cors.origens=http://localhost:5173",
+            // Limites folgados: os testes de limite sobrescrevem estes valores.
+            "cadastro.limites.respostas-por-sessao=1000",
+            "cadastro.limites.respostas-por-minuto=1000",
+            "cadastro.limites.requisicoes-por-origem-por-minuto=100000"
+        })
 @AutoConfigureMockMvc
 @Import(TesteIntegracao.Configuracao.class)
 public abstract class TesteIntegracao {

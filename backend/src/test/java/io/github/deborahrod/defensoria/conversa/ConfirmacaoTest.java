@@ -19,6 +19,8 @@ import io.github.deborahrod.defensoria.cadastro.RepresentacaoDeclaradaRepository
 import io.github.deborahrod.defensoria.cadastro.SessaoCadastroRepository;
 import io.github.deborahrod.defensoria.cadastro.SituacaoCpf;
 import io.github.deborahrod.defensoria.cadastro.SituacaoMoradia;
+import io.github.deborahrod.defensoria.integracao.EventoTecnico;
+import io.github.deborahrod.defensoria.integracao.EventoTecnicoRepository;
 import io.github.deborahrod.defensoria.cadastro.ServicoSessao;
 import io.github.deborahrod.defensoria.cadastro.ModoInteracao;
 import java.math.BigDecimal;
@@ -51,6 +53,9 @@ class ConfirmacaoTest extends TesteIntegracao {
 
     @Autowired
     private SessaoCadastroRepository sessoes;
+
+    @Autowired
+    private EventoTecnicoRepository eventos;
 
     @Autowired
     private ServicoSessao servicoSessao;
@@ -279,6 +284,31 @@ class ConfirmacaoTest extends TesteIntegracao {
         assertThat(representacao.getVinculoDeclarado()).isEqualTo("FAMILIAR");
         assertThat(titular.getContato().referenciaNome()).isEqualTo("Rita Fictícia");
         assertThat(titular.getContato().referenciaCanal()).isEqualTo("rita@exemplo.com");
+    }
+
+    @Test
+    void confirmacaoGeraUmUnicoEventoMesmoQuandoRepetida() throws Exception {
+        var participante = emRevisao(RespostasFicticias.fluxoComum());
+        var versao = participante.versao;
+
+        participante.confirmar(versao, UUID.randomUUID()).andExpect(status().isOk());
+        participante.confirmar(versao, UUID.randomUUID()).andExpect(status().isOk());
+        participante.confirmar(versao, UUID.randomUUID()).andExpect(status().isOk());
+
+        assertThat(eventos.findAll()).extracting(EventoTecnico::getTipo, EventoTecnico::getStatus)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("CONFIRMACAO", "SUCESSO"));
+    }
+
+    @Test
+    void conflitoDeCpfFicaRegistradoMesmoComAGravacaoDesfeita() throws Exception {
+        emRevisao(RespostasFicticias.fluxoComum()).confirmar().andExpect(status().isOk());
+        var segunda = emRevisao(RespostasFicticias.fluxoComumComCpf("529.982.247-25"));
+
+        segunda.confirmar().andExpect(status().isConflict());
+
+        assertThat(eventos.findAll()).extracting(EventoTecnico::getStatus)
+                .containsExactlyInAnyOrder("SUCESSO", "CONFLITO_CADASTRAL");
+        assertThat(pessoas.count()).isEqualTo(1);
     }
 
     @Test
