@@ -36,11 +36,15 @@ public abstract class TesteIntegracao {
     protected RelogioDeTeste relogio;
 
     @Autowired
+    protected InterpretadorFalso interpretador;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     @BeforeEach
     void comecarDoZero() {
         relogio.reiniciar();
+        interpretador.reiniciar();
         jdbc.execute("""
                 TRUNCATE confirmacao_cadastro, declaracao_socioeconomica, representacao_declarada,
                     pessoa_cadastro, mensagem_processada, rascunho_cadastro, sessao_cadastro, evento_tecnico
@@ -58,6 +62,12 @@ public abstract class TesteIntegracao {
         @Primary
         RelogioDeTeste relogioDeTeste() {
             return new RelogioDeTeste();
+        }
+
+        @Bean
+        @Primary
+        InterpretadorFalso interpretadorFalso() {
+            return new InterpretadorFalso();
         }
     }
 }

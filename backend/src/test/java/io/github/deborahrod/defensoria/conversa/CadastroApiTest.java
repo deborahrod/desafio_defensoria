@@ -30,6 +30,8 @@ class CadastroApiTest extends TesteIntegracao {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.estado").value("EM_PREENCHIMENTO"))
                 .andExpect(jsonPath("$.avisos[0]").value(containsString("uma de cada vez")))
+                .andExpect(jsonPath("$.avisos[1]").value(containsString("IA não está configurada")))
+                .andExpect(jsonPath("$.modoInteracao").value("ESTRUTURADO"))
                 .andExpect(jsonPath("$.proximaPergunta.campo").value("paraQuem"))
                 .andExpect(jsonPath("$.proximaPergunta.tipoEntrada").value("ESCOLHA"))
                 .andExpect(jsonPath("$.proximaPergunta.opcoes.length()").value(2))

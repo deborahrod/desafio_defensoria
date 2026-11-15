@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.deborahrod.defensoria.cadastro.Campo;
 import io.github.deborahrod.defensoria.cadastro.MotivoAusencia;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastro;
+import io.github.deborahrod.defensoria.integracao.PropriedadesLlm;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -15,7 +16,7 @@ class RoteiroCadastroTest {
 
     private static final Instant AGORA = Instant.parse("2026-11-15T12:00:00Z");
 
-    private final RoteiroCadastro roteiro = new RoteiroCadastro();
+    private final RoteiroCadastro roteiro = new RoteiroCadastro(new PropriedadesLlm("", null, null, null, 0));
     private final RascunhoCadastro rascunho = new RascunhoCadastro(UUID.randomUUID(), AGORA);
 
     @Test
@@ -149,6 +150,22 @@ class RoteiroCadastroTest {
 
         assertThat(paraQuem.resolver(RespostaEntrada.valor("para mim"), contexto)).isInstanceOf(Resolucao.Invalida.class);
         assertThat(paraQuem.resolver(RespostaEntrada.opcao("ADMIN"), contexto)).isInstanceOf(Resolucao.Invalida.class);
+    }
+
+    @Test
+    void avisoDeIaSoEPerguntadoQuandoHaChaveConfigurada() {
+        var comChave = new RoteiroCadastro(new PropriedadesLlm("chave", null, null, null, 0));
+        var semChave = roteiro;
+
+        assertThat(comChave.de(AVISO_IA, rascunho)).isPresent();
+        assertThat(semChave.de(AVISO_IA, rascunho)).isEmpty();
+    }
+
+    @Test
+    void soMunicipioEOcupacaoSaoElegiveisParaInterpretacaoPorIa() {
+        var elegiveis = roteiro.aplicaveis(rascunho).filter(Pergunta::interpretavelPorIa).map(Pergunta::campo).toList();
+
+        assertThat(elegiveis).containsExactlyInAnyOrder(MUNICIPIO, OCUPACAO);
     }
 
     @Test
