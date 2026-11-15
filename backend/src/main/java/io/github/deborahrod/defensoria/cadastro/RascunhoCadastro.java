@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +25,9 @@ public class RascunhoCadastro {
 
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> ausencias = new LinkedHashMap<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Esclarecimento esclarecimento;
 
     // Avança a cada gravação; uma resposta baseada em versão antiga é recusada pelo banco.
     @Version
@@ -66,6 +70,28 @@ public class RascunhoCadastro {
         aplicar(novosDados, novasAusencias, agora);
     }
 
+    public void pedirEsclarecimento(Esclarecimento pendente, Instant agora) {
+        this.esclarecimento = pendente;
+        this.atualizadoEm = agora;
+    }
+
+    public void encerrarEsclarecimento(Instant agora) {
+        this.esclarecimento = null;
+        this.atualizadoEm = agora;
+    }
+
+    public Optional<Esclarecimento> esclarecimento() {
+        return Optional.ofNullable(esclarecimento);
+    }
+
+    /** Cópia fora do banco, para avaliar o efeito de uma mudança antes de aplicá-la. */
+    public RascunhoCadastro copia() {
+        var copia = new RascunhoCadastro(sessaoId, atualizadoEm);
+        copia.dados = new LinkedHashMap<>(dados);
+        copia.ausencias = new LinkedHashMap<>(ausencias);
+        return copia;
+    }
+
     public Optional<String> valor(Campo campo) {
         return Optional.ofNullable(dados.get(campo.id()));
     }
@@ -76,6 +102,12 @@ public class RascunhoCadastro {
 
     public Optional<MotivoAusencia> ausencia(Campo campo) {
         return Optional.ofNullable(ausencias.get(campo.id())).map(MotivoAusencia::valueOf);
+    }
+
+    public Map<String, String> ausenciasDe(Collection<Campo> campos) {
+        var selecionadas = new LinkedHashMap<String, String>();
+        campos.forEach(campo -> ausencia(campo).ifPresent(motivo -> selecionadas.put(campo.id(), motivo.name())));
+        return selecionadas;
     }
 
     public boolean respondido(Campo campo) {
