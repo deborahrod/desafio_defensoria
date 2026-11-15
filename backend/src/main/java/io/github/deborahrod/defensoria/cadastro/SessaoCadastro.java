@@ -55,12 +55,26 @@ public class SessaoCadastro {
         return !agora.isBefore(expiraEm);
     }
 
+    public void mudarPara(EstadoSessao destino) {
+        if (estado == destino) {
+            return;
+        }
+        if (!estado.podeIrPara(destino)) {
+            throw new IllegalStateException("Transição não permitida: " + estado + " para " + destino);
+        }
+        this.estado = destino;
+    }
+
     public void expirar() {
-        this.estado = EstadoSessao.EXPIRADO;
+        mudarPara(EstadoSessao.EXPIRADO);
     }
 
     public void cancelar() {
-        this.estado = EstadoSessao.CANCELADO;
+        mudarPara(EstadoSessao.CANCELADO);
+    }
+
+    public void usarModo(ModoInteracao modo) {
+        this.modoInteracao = modo;
     }
 
     public UUID getId() {

@@ -105,7 +105,7 @@ class PersistenciaCadastroTest extends TesteIntegracao {
     }
 
     @Test
-    void rascunhoGuardaValoresAusenciasEAvancaAVersao() {
+    void rascunhoGuardaValoresAusenciasEAvancaAVersaoACadaGravacao() {
         var sessao = novaSessao();
         var rascunho = new RascunhoCadastro(sessao.getId(), AGORA);
         rascunho.informar(Campo.NOME, "Íris Fictícia", AGORA);
@@ -113,7 +113,7 @@ class PersistenciaCadastroTest extends TesteIntegracao {
         rascunhos.saveAndFlush(rascunho);
 
         var lido = rascunhos.findById(sessao.getId()).orElseThrow();
-        assertThat(lido.getVersao()).isEqualTo(2);
+        assertThat(lido.getVersao()).isZero();
         assertThat(lido.valor(Campo.NOME)).contains("Íris Fictícia");
         assertThat(lido.ausencia(Campo.NASCIMENTO)).contains(MotivoAusencia.DESCONHECIDO);
         assertThat(lido.respondido(Campo.CPF)).isFalse();
@@ -122,7 +122,7 @@ class PersistenciaCadastroTest extends TesteIntegracao {
         rascunhos.saveAndFlush(lido);
 
         var corrigido = rascunhos.findById(sessao.getId()).orElseThrow();
-        assertThat(corrigido.getVersao()).isEqualTo(3);
+        assertThat(corrigido.getVersao()).isEqualTo(1);
         assertThat(corrigido.valor(Campo.NASCIMENTO)).contains("1990-05-20");
         assertThat(corrigido.ausencia(Campo.NASCIMENTO)).isEmpty();
     }

@@ -3,6 +3,7 @@ package io.github.deborahrod.defensoria.cadastro;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,6 +25,8 @@ public class RascunhoCadastro {
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> ausencias = new LinkedHashMap<>();
 
+    // Avança a cada gravação; uma resposta baseada em versão antiga é recusada pelo banco.
+    @Version
     private int versao;
 
     private Instant atualizadoEm;
@@ -67,6 +70,10 @@ public class RascunhoCadastro {
         return Optional.ofNullable(dados.get(campo.id()));
     }
 
+    public boolean tem(Campo campo, String valor) {
+        return valor.equals(dados.get(campo.id()));
+    }
+
     public Optional<MotivoAusencia> ausencia(Campo campo) {
         return Optional.ofNullable(ausencias.get(campo.id())).map(MotivoAusencia::valueOf);
     }
@@ -91,7 +98,6 @@ public class RascunhoCadastro {
     private void aplicar(Map<String, String> novosDados, Map<String, String> novasAusencias, Instant agora) {
         this.dados = novosDados;
         this.ausencias = novasAusencias;
-        this.versao++;
         this.atualizadoEm = agora;
     }
 }
