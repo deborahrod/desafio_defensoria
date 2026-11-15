@@ -1,6 +1,18 @@
 spring:
   application:
     name: cadastro
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:cadastro}
+    username: ${DB_USER:cadastro}
+    password: ${DB_PASSWORD:cadastro_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
 
 server:
   port: 8081
