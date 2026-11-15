@@ -1,66 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { EstadoConversa, ProximaPergunta } from '../api/tipos.ts'
+import { expect, test } from 'vitest'
+import { NOME, PARA_QUEM, corpoEnviado, estado, fetchSimulado, json, prepararFetch } from '../testes/fixtures.ts'
 import ChatCadastro from './ChatCadastro.tsx'
 
-const PARA_QUEM: ProximaPergunta = {
-  campo: 'paraQuem',
-  texto: 'Este cadastro é para você ou para outra pessoa?',
-  ajuda: null,
-  tipoEntrada: 'ESCOLHA',
-  opcoes: [
-    { id: 'PROPRIA_PESSOA', rotulo: 'Para mim' },
-    { id: 'OUTRA_PESSOA', rotulo: 'Para outra pessoa' },
-  ],
-  tamanhoMaximo: null,
-}
-
-const NOME: ProximaPergunta = {
-  campo: 'nome',
-  texto: 'Como você se chama?',
-  ajuda: null,
-  tipoEntrada: 'TEXTO',
-  opcoes: [],
-  tamanhoMaximo: 200,
-}
-
-function estado(versao: number, pergunta: ProximaPergunta | null, avisos: string[] = []): EstadoConversa {
-  return {
-    estado: pergunta ? 'EM_PREENCHIMENTO' : 'EM_REVISAO',
-    modoInteracao: 'ESTRUTURADO',
-    versao,
-    proximaPergunta: pergunta,
-    progresso: { etapa: 1, total: 5, secao: 'Quem preenche' },
-    resumo: [],
-    pendencias: [],
-    avisos,
-    comprovante: null,
-    expiraEm: '2026-11-15T12:30:00Z',
-    minutosDeInatividade: 30,
-  }
-}
-
-function json(corpo: unknown, status = 200): Response {
-  return new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } })
-}
-
-const fetchSimulado = vi.fn<typeof fetch>()
-
-beforeEach(() => {
-  document.cookie = 'XSRF-TOKEN=token-de-teste'
-  vi.stubGlobal('fetch', fetchSimulado)
-})
-
-afterEach(() => {
-  fetchSimulado.mockReset()
-  vi.unstubAllGlobals()
-  document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-})
-
-function corpoEnviado(chamada: number) {
-  return JSON.parse(String(fetchSimulado.mock.calls[chamada][1]?.body))
-}
+prepararFetch()
 
 async function comecar() {
   const usuario = userEvent.setup()

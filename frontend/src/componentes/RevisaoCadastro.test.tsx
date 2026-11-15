@@ -1,83 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { EstadoConversa, ItemResumo } from '../api/tipos.ts'
+import { expect, test } from 'vitest'
+import { confirmado, corpoEnviado, fetchSimulado, json, prepararFetch, revisao } from '../testes/fixtures.ts'
 import ChatCadastro from './ChatCadastro.tsx'
 
-const TELEFONE: ItemResumo = {
-  campo: 'telefone',
-  rotulo: 'Telefone',
-  valor: '(62) 91234-5678',
-  situacao: 'INFORMADO',
-  edicao: { campo: 'telefone', texto: 'Qual número podemos usar?', ajuda: null, tipoEntrada: 'TELEFONE', opcoes: [], tamanhoMaximo: 20 },
-}
-
-const CPF: ItemResumo = {
-  campo: 'situacaoCpf',
-  rotulo: 'Tem CPF para informar',
-  valor: 'Não possuo CPF',
-  situacao: 'INFORMADO',
-  edicao: {
-    campo: 'situacaoCpf',
-    texto: 'Você possui o CPF para informar agora?',
-    ajuda: null,
-    tipoEntrada: 'ESCOLHA',
-    opcoes: [
-      { id: 'INFORMADO', rotulo: 'Sim, vou informar' },
-      { id: 'NAO_POSSUI', rotulo: 'Não possuo CPF' },
-    ],
-    tamanhoMaximo: null,
-  },
-}
-
-const NASCIMENTO: ItemResumo = {
-  campo: 'nascimento',
-  rotulo: 'Data de nascimento',
-  valor: 'Não soube informar',
-  situacao: 'NAO_INFORMADO',
-  edicao: { campo: 'nascimento', texto: 'Qual é a sua data de nascimento?', ajuda: null, tipoEntrada: 'DATA', opcoes: [], tamanhoMaximo: 10 },
-}
-
-function revisao(versao: number, sobrescrever: Partial<EstadoConversa> = {}): EstadoConversa {
-  return {
-    estado: 'EM_REVISAO',
-    modoInteracao: 'ESTRUTURADO',
-    versao,
-    proximaPergunta: null,
-    progresso: { etapa: 5, total: 5, secao: 'Revisão' },
-    resumo: [
-      { titulo: 'Identificação', itens: [NASCIMENTO, CPF] },
-      { titulo: 'Contato', itens: [TELEFONE] },
-    ],
-    pendencias: ['Data de nascimento: Não soube informar', 'CPF: Não possuo CPF'],
-    avisos: [],
-    comprovante: null,
-    expiraEm: '2026-11-15T12:30:00Z',
-    minutosDeInatividade: 30,
-    ...sobrescrever,
-  }
-}
-
-function json(corpo: unknown, status = 200): Response {
-  return new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } })
-}
-
-const fetchSimulado = vi.fn<typeof fetch>()
-
-beforeEach(() => {
-  document.cookie = 'XSRF-TOKEN=token-de-teste'
-  vi.stubGlobal('fetch', fetchSimulado)
-})
-
-afterEach(() => {
-  fetchSimulado.mockReset()
-  vi.unstubAllGlobals()
-  document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-})
-
-function corpoEnviado(chamada: number) {
-  return JSON.parse(String(fetchSimulado.mock.calls[chamada][1]?.body))
-}
+prepararFetch()
 
 async function abrirRevisao(estadoInicial = revisao(8)) {
   fetchSimulado.mockResolvedValueOnce(json(estadoInicial, 201))
@@ -197,13 +124,7 @@ test('Confirmar cadastro grava uma vez com a versão revisada e mostra o comprov
   expect(corpoEnviado(1).chaveIdempotencia).toMatch(/^[0-9a-f-]{36}$/)
 
   concluir(
-    json({
-      ...revisao(8),
-      estado: 'CONFIRMADO',
-      resumo: [],
-      pendencias: [],
-      comprovante: { identificador: '0b8f1c0e-5f6a-4c53-9a7e-2f3d1f3c9a11', confirmadoEm: '2026-11-15T15:00:00Z', comPendencias: true },
-    }),
+    json(confirmado(8, { comPendencias: true })),
   )
 
   const titulo = await screen.findByRole('heading', { name: 'Cadastro gravado' })
@@ -220,13 +141,7 @@ test('falha de rede ao confirmar permite tentar de novo com a mesma chave de ide
   fetchSimulado
     .mockRejectedValueOnce(new TypeError('falha de rede'))
     .mockResolvedValueOnce(
-      json({
-        ...revisao(8),
-        estado: 'CONFIRMADO',
-        resumo: [],
-        pendencias: [],
-        comprovante: { identificador: 'abc', confirmadoEm: '2026-11-15T15:00:00Z', comPendencias: false },
-      }),
+      json(confirmado(8, { identificador: 'abc' })),
     )
 
   await usuario.click(screen.getByRole('button', { name: 'Confirmar cadastro' }))
@@ -262,13 +177,7 @@ test('encerrar depois do comprovante limpa a sessão e volta ao início', async 
   const usuario = await abrirRevisao()
   fetchSimulado
     .mockResolvedValueOnce(
-      json({
-        ...revisao(8),
-        estado: 'CONFIRMADO',
-        resumo: [],
-        pendencias: [],
-        comprovante: { identificador: 'abc', confirmadoEm: '2026-11-15T15:00:00Z', comPendencias: false },
-      }),
+      json(confirmado(8, { identificador: 'abc' })),
     )
     .mockResolvedValueOnce(new Response(null, { status: 204 }))
 
