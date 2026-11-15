@@ -34,6 +34,13 @@
   font-weight: var(--peso-medio);
 }
 
+.modo {
+  padding: var(--espaco-2) var(--espaco-3);
+  border-left: 4px solid var(--cor-verde-claro);
+  background: var(--cor-fundo-suave);
+  font-size: var(--texto-pequeno);
+}
+
 .mensagens {
   display: grid;
   gap: var(--espaco-2);

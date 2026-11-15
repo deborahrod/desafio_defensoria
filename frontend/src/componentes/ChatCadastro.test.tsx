@@ -201,3 +201,43 @@ test('cancelar pede confirmação antes de apagar o cadastro', async () => {
   await screen.findByRole('button', { name: 'Começar' })
   expect(fetchSimulado.mock.calls[1][1]?.method).toBe('DELETE')
 })
+
+test('mostra se a conversa usa IA e avisa que a interpretação pode demorar', async () => {
+  let concluir: (r: Response) => void = () => undefined
+  fetchSimulado
+    .mockResolvedValueOnce(json({ ...estado(0, NOME), modoInteracao: 'ASSISTIDO_POR_IA' }, 201))
+    .mockReturnValueOnce(new Promise<Response>((resolve) => (concluir = resolve)))
+  const usuario = userEvent.setup()
+  render(<ChatCadastro />)
+  await usuario.click(screen.getByRole('button', { name: 'Começar' }))
+
+  expect(await screen.findByText(/Assistência por IA ativa/)).toBeInTheDocument()
+  await usuario.type(screen.getByLabelText('Sua resposta'), 'Moro em Goiânia{Enter}')
+  expect(screen.getByRole('status')).toHaveTextContent('interpretação por IA pode levar alguns segundos')
+
+  concluir(json({ ...estado(1, null), modoInteracao: 'ASSISTIDO_POR_IA' }))
+  await screen.findByRole('heading', { name: 'Revise seus dados' })
+})
+
+test('sem IA a conversa informa que as perguntas são diretas', async () => {
+  fetchSimulado.mockResolvedValueOnce(json(estado(0, PARA_QUEM), 201))
+
+  await comecar()
+
+  expect(screen.getByText('Perguntas diretas, sem uso de IA.')).toBeInTheDocument()
+})
+
+test('aviso de falha da IA chega como mensagem da conversa e o modo volta a ser direto', async () => {
+  fetchSimulado
+    .mockResolvedValueOnce(json({ ...estado(0, NOME), modoInteracao: 'ASSISTIDO_POR_IA' }, 201))
+    .mockResolvedValueOnce(json(estado(0, NOME, ['A assistência por IA está indisponível no momento.'])))
+  const usuario = userEvent.setup()
+  render(<ChatCadastro />)
+  await usuario.click(screen.getByRole('button', { name: 'Começar' }))
+
+  await usuario.type(await screen.findByLabelText('Sua resposta'), 'Moro em Goiânia{Enter}')
+
+  await screen.findByText('A assistência por IA está indisponível no momento.')
+  expect(screen.getByText('Perguntas diretas, sem uso de IA.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Sua resposta')).toBeInTheDocument()
+})

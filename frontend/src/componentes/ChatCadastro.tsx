@@ -32,6 +32,14 @@ export default function ChatCadastro() {
         </p>
       )}
 
+      {estado && !confirmado && (
+        <p className={estilos.modo}>
+          {estado.modoInteracao === 'ASSISTIDO_POR_IA'
+            ? 'Assistência por IA ativa: o que você escrever sobre município e ocupação é interpretado por um serviço externo.'
+            : 'Perguntas diretas, sem uso de IA.'}
+        </p>
+      )}
+
       <ol className={estilos.mensagens} role="log" aria-live="polite" aria-label="Mensagens">
         {transcricao.map((m) => (
           <li key={m.id} className={`${estilos.mensagem} ${m.autor === 'pessoa' ? estilos.pessoa : estilos.sistema} ${m.erro ? estilos.recusada : ''}`}>
@@ -55,7 +63,11 @@ export default function ChatCadastro() {
         <EntradaConversa key={`${pergunta.campo}-${estado?.versao}`} pergunta={pergunta} desabilitado={enviando} aoEnviar={conversa.enviar} />
       ) : null}
 
-      {enviando && <p className={estilos.status} role="status">Enviando…</p>}
+      {enviando && (
+        <p className={estilos.status} role="status">
+          {estado?.modoInteracao === 'ASSISTIDO_POR_IA' ? 'Enviando… a interpretação por IA pode levar alguns segundos.' : 'Enviando…'}
+        </p>
+      )}
       {recusa && <p role="alert" className={estilos.erro}>{recusa}</p>}
       {falha && (
         <div role="alert" className={estilos.erro}>
