@@ -1,14 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { NOME, PARA_QUEM, corpoEnviado, estado, fetchSimulado, json, prepararFetch } from '../testes/fixtures.ts'
-import ChatCadastro from './ChatCadastro.tsx'
+import Cadastro from './Cadastro.tsx'
 
 prepararFetch()
 
 async function comecar() {
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
   await screen.findByText(PARA_QUEM.texto)
   return usuario
@@ -20,7 +20,11 @@ test('Começar abre a sessão e mostra uma pergunta por vez, com avisos e progre
   await comecar()
 
   expect(screen.getByText('Vou fazer algumas perguntas.')).toBeInTheDocument()
-  expect(screen.getByText('Etapa 1 de 5: Quem preenche')).toBeInTheDocument()
+  const etapas = within(screen.getByRole('navigation', { name: 'Progresso do cadastro' }))
+  expect(etapas.getAllByRole('listitem')).toHaveLength(6)
+  expect(etapas.getByRole('listitem', { current: 'step' })).toHaveTextContent('Quem preenche')
+  expect(etapas.getByText('Revisão')).toBeInTheDocument()
+  expect(screen.getByRole('complementary', { name: 'Suas respostas' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Para mim' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Para outra pessoa' })).toBeInTheDocument()
   const [url, opcoes] = fetchSimulado.mock.calls[0]
@@ -44,7 +48,7 @@ test('escolher uma opção envia mensagemId e versão e mostra a próxima pergun
 test('texto livre é enviado com Enter, sem usar o mouse', async () => {
   fetchSimulado.mockResolvedValueOnce(json(estado(0, NOME), 201)).mockResolvedValueOnce(json(estado(1, null)))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
   const campo = await screen.findByLabelText('Sua resposta')
   await waitFor(() => expect(campo).toHaveFocus())
@@ -98,7 +102,7 @@ test('resposta recusada pelo servidor aparece na conversa e a pergunta continua'
     .mockResolvedValueOnce(json(estado(0, NOME), 201))
     .mockResolvedValueOnce(json({ codigo: 'RESPOSTA_INVALIDA', mensagem: 'Preciso que você informe o nome para continuar.', campo: 'nome' }, 400))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
 
   await usuario.type(await screen.findByLabelText('Sua resposta'), '12345{Enter}')
@@ -110,7 +114,7 @@ test('resposta recusada pelo servidor aparece na conversa e a pergunta continua'
 test('texto digitado é exibido como texto, sem interpretar HTML', async () => {
   fetchSimulado.mockResolvedValueOnce(json(estado(0, NOME), 201)).mockResolvedValueOnce(json(estado(1, null)))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
 
   await usuario.type(await screen.findByLabelText('Sua resposta'), '<img src=x onerror=alert(1)>{Enter}')
@@ -152,7 +156,7 @@ test('mostra se a conversa usa IA e avisa que a interpretação pode demorar', a
     .mockResolvedValueOnce(json({ ...estado(0, NOME), modoInteracao: 'ASSISTIDO_POR_IA' }, 201))
     .mockReturnValueOnce(new Promise<Response>((resolve) => (concluir = resolve)))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
 
   expect(await screen.findByText(/Assistência por IA ativa/)).toBeInTheDocument()
@@ -176,7 +180,7 @@ test('aviso de falha da IA chega como mensagem da conversa e o modo volta a ser 
     .mockResolvedValueOnce(json({ ...estado(0, NOME), modoInteracao: 'ASSISTIDO_POR_IA' }, 201))
     .mockResolvedValueOnce(json(estado(0, NOME, ['A assistência por IA está indisponível no momento.'])))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
 
   await usuario.type(await screen.findByLabelText('Sua resposta'), 'Moro em Goiânia{Enter}')

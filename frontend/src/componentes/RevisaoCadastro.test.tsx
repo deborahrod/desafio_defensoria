@@ -2,20 +2,20 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test } from 'vitest'
 import { confirmado, corpoEnviado, fetchSimulado, json, prepararFetch, revisao } from '../testes/fixtures.ts'
-import ChatCadastro from './ChatCadastro.tsx'
+import Cadastro from './Cadastro.tsx'
 
 prepararFetch()
 
 async function abrirRevisao(estadoInicial = revisao(8)) {
   fetchSimulado.mockResolvedValueOnce(json(estadoInicial, 201))
   const usuario = userEvent.setup()
-  render(<ChatCadastro />)
+  render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))
   await screen.findByRole('heading', { name: 'Revise seus dados' })
   return usuario
 }
 
-test('o resumo mostra seções, valores explícitos, pendências e Corrigir em cada item', async () => {
+test('o resumo mostra seções, valores explícitos, pendências e Editar em cada item', async () => {
   await abrirRevisao()
 
   const identificacao = within(screen.getByRole('region', { name: 'Identificação' }))
@@ -23,33 +23,33 @@ test('o resumo mostra seções, valores explícitos, pendências e Corrigir em c
   expect(identificacao.getByText('Não possuo CPF')).toBeInTheDocument()
   const contato = within(screen.getByRole('region', { name: 'Contato' }))
   expect(contato.getByText('(62) 91234-5678')).toBeInTheDocument()
-  expect(screen.getAllByRole('button', { name: /^Corrigir / })).toHaveLength(3)
+  expect(screen.getAllByRole('button', { name: /^Editar / })).toHaveLength(3)
   const pendencias = within(screen.getByRole('note', { name: 'Informações pendentes' }))
   expect(pendencias.getByText('Data de nascimento: Não soube informar')).toBeInTheDocument()
   expect(screen.getByText(/não significa que o atendimento foi aprovado/)).toBeInTheDocument()
 })
 
-test('Corrigir abre a entrada do tipo certo e envia só o campo escolhido com a versão revisada', async () => {
+test('Editar abre a entrada do tipo certo e envia só o campo escolhido com a versão revisada', async () => {
   const usuario = await abrirRevisao()
   fetchSimulado.mockResolvedValueOnce(json(revisao(9)))
 
-  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
   expect(screen.getByText('Qual número podemos usar?')).toBeInTheDocument()
-  await usuario.type(screen.getByLabelText('Sua resposta'), '(62) 99876-5432{Enter}')
+  await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '(62) 99876-5432{Enter}')
 
   await waitFor(() => expect(fetchSimulado).toHaveBeenCalledTimes(2))
   const [url, opcoes] = fetchSimulado.mock.calls[1]
   expect(url).toBe('/api/v1/cadastro/campos/telefone')
   expect(opcoes?.method).toBe('PATCH')
   expect(corpoEnviado(1)).toEqual({ versao: 8, valor: '(62) 99876-5432', opcao: null })
-  await waitFor(() => expect(screen.queryByLabelText('Sua resposta')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.queryByLabelText('Nova resposta: Telefone')).not.toBeInTheDocument())
 })
 
-test('Corrigir funciona só com o teclado', async () => {
+test('Editar funciona só com o teclado', async () => {
   const usuario = await abrirRevisao()
   fetchSimulado.mockResolvedValueOnce(json(revisao(9)))
 
-  screen.getByRole('button', { name: 'Corrigir Tem CPF para informar' }).focus()
+  screen.getByRole('button', { name: 'Editar Tem CPF para informar' }).focus()
   await usuario.keyboard('{Enter}')
   const opcao = screen.getByRole('button', { name: 'Não possuo CPF', hidden: false })
   opcao.focus()
@@ -64,20 +64,20 @@ test('correção recusada pelo servidor mostra o motivo e mantém a edição abe
     json({ codigo: 'RESPOSTA_INVALIDA', mensagem: 'Informe o telefone com DDD, por exemplo (62) 91234-5678.', campo: 'telefone' }, 400),
   )
 
-  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
-  await usuario.type(screen.getByLabelText('Sua resposta'), '123{Enter}')
+  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
+  await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '123{Enter}')
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Informe o telefone com DDD')
-  expect(screen.getByLabelText('Sua resposta')).toBeInTheDocument()
+  expect(screen.getByLabelText('Nova resposta: Telefone')).toBeInTheDocument()
 })
 
-test('Cancelar correção fecha a edição sem chamar o servidor', async () => {
+test('Cancelar edição fecha a edição sem chamar o servidor', async () => {
   const usuario = await abrirRevisao()
 
-  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
-  await usuario.click(screen.getByRole('button', { name: 'Cancelar correção' }))
+  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Cancelar edição' }))
 
-  expect(screen.queryByLabelText('Sua resposta')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Nova resposta: Telefone')).not.toBeInTheDocument()
   expect(fetchSimulado).toHaveBeenCalledTimes(1)
 })
 
@@ -101,7 +101,7 @@ test('correção que pede confirmação para apagar dados volta para a pergunta 
     }),
   )
 
-  await usuario.click(screen.getByRole('button', { name: 'Corrigir Tem CPF para informar' }))
+  await usuario.click(screen.getByRole('button', { name: 'Editar Tem CPF para informar' }))
   await usuario.click(screen.getByRole('button', { name: 'Sim, vou informar' }))
 
   expect(await screen.findByRole('button', { name: 'Sim, alterar' })).toBeInTheDocument()

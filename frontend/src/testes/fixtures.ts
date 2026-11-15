@@ -56,10 +56,12 @@ export const NASCIMENTO: ItemResumo = {
   edicao: { campo: 'nascimento', texto: 'Qual é a sua data de nascimento?', ajuda: null, tipoEntrada: 'DATA', opcoes: [], tamanhoMaximo: 10 },
 }
 
+const SECOES = ['Quem preenche', 'Identificação', 'Contato', 'Localização', 'Situação socioeconômica']
+
 const COMUM: Omit<EstadoConversa, 'estado' | 'versao'> = {
   modoInteracao: 'ESTRUTURADO',
   proximaPergunta: null,
-  progresso: { etapa: 1, total: 5, secao: 'Quem preenche' },
+  progresso: { etapa: 1, total: 5, secao: 'Quem preenche', secoes: SECOES },
   resumo: [],
   pendencias: [],
   avisos: [],
@@ -78,7 +80,7 @@ export function revisao(versao: number, sobrescrever: Partial<EstadoConversa> = 
     ...COMUM,
     estado: 'EM_REVISAO',
     versao,
-    progresso: { etapa: 5, total: 5, secao: 'Revisão' },
+    progresso: { etapa: 5, total: 5, secao: 'Revisão', secoes: SECOES },
     resumo: [
       { titulo: 'Identificação', itens: [NASCIMENTO, CPF] },
       { titulo: 'Contato', itens: [TELEFONE] },
