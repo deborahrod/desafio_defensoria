@@ -107,7 +107,7 @@ test('texto livre é enviado com Enter, sem usar o mouse', async () => {
 
   await usuario.type(campo, 'Ana Fictícia{Enter}')
 
-  await screen.findByText('Você respondeu todas as perguntas.')
+  await screen.findByRole('heading', { name: 'Revise seus dados' })
   expect(corpoEnviado(1)).toMatchObject({ valor: 'Ana Fictícia', opcao: null })
 })
 
