@@ -20,10 +20,10 @@ Protótipo de cadastro de pessoa assistida por conversa guiada, desenvolvido par
 
 ## Como funciona
 
-1. A pessoa abre a página, lê a apresentação (com o aviso de protótipo) e escolhe **Começar**. Isso cria uma sessão privada.
-2. O servidor decide a próxima pergunta. Há entradas próprias para escolha, texto, data, CPF, telefone, e-mail, CEP, valor em reais e números.
+1. A primeira página explica **quem pode ser atendido** pela Defensoria, em três blocos baseados na página oficial (renda e vulnerabilidade, proteção de direitos, sistema de justiça), e traz o aviso de protótipo. A pessoa escolhe **Começar**, o que cria uma sessão privada.
+2. O servidor decide a próxima pergunta. Uma barra de **etapas** (Quem preenche, Identificação, Contato, Localização, Situação socioeconômica e Revisão) mostra o progresso. Há entradas próprias para escolha, texto, data, CPF, telefone, e-mail, CEP, valor em reais e números.
 3. Para CPF, nascimento, endereço e contato existem respostas de ausência (não possuo, não sei informar, não estou com o documento, sem número). Nada é inventado para preencher campo: ausência vira valor nulo com o motivo registrado.
-4. Ao responder tudo, abre o **resumo por seções**, com ação **Corrigir** em cada item. Toda alteração gera uma nova versão e exige nova revisão.
+4. As respostas aceitas aparecem num painel **Suas respostas**, ao lado da conversa (abaixo e recolhido no celular), com **Editar** em cada item, durante o preenchimento e na revisão final. Toda alteração gera uma nova versão e exige nova revisão.
 5. **Confirmar cadastro** é a única ação que grava de forma definitiva. Digitar "sim" em qualquer etapa não salva nada.
 6. O comprovante mostra um identificador da operação e a data. Ele não é protocolo oficial nem permite consultar o cadastro.
 
@@ -56,7 +56,7 @@ API Spring Boot 3 (Java 21), monólito modular
 PostgreSQL 16 (Flyway)    Provedor de IA externo (só o backend fala com ele)
 ```
 
-- **Frontend:** componentes `CabecalhoInstitucional`, `ChatCadastro`, `EntradaConversa`, `ResumoCadastro`, `ComprovanteCadastro` e `RodapeInstitucional`, com tema centralizado em tokens (`frontend/src/tema/tokens.css`). Sem biblioteca de UI. A conversa fica só em memória no navegador, sem `localStorage`.
+- **Frontend:** componentes `CabecalhoInstitucional`, `PaginaInicial`, `EtapasProgresso`, `ChatCadastro`, `EntradaConversa`, `PainelRespostas`, `RevisaoFinal`, `ComprovanteCadastro` e `RodapeInstitucional`, com tema centralizado em tokens (`frontend/src/tema/tokens.css`). A barra de etapas usa o `Stepper` do Material UI, o mesmo conjunto de componentes que o portal da Defensoria usa, com tema próprio (`temaMui.ts`) derivado dos tokens. O restante é CSS próprio. A conversa fica só em memória no navegador, sem `localStorage`.
 - **Backend:** o roteiro de perguntas é uma lista declarativa (`RoteiroCadastro`). A etapa atual não é guardada: é sempre a primeira pergunta aplicável ainda sem resposta, o que mantém o fluxo coerente após correções.
 - **Sessão:** segredo aleatório de 256 bits em cookie `HttpOnly` e `SameSite=Strict`. O banco guarda apenas o hash. Expira por inatividade (30 minutos, configurável) e uma rotina apaga rascunhos expirados.
 - **Concorrência:** a versão do rascunho é controlada pelo banco, `mensagemId` garante idempotência por turno, uma sessão só executa uma operação de resposta por vez e a confirmação trava a linha da sessão. A chamada ao provedor de IA acontece fora de qualquer transação.
@@ -155,7 +155,7 @@ Todas as rotas ficam sob `/api/v1/cadastro` e dependem do cookie de sessão. Nã
 | `POST /sessao` | Inicia a sessão, define o cookie e devolve a abertura e a primeira pergunta |
 | `GET /atual` | Estado, rascunho e próxima pergunta da sessão atual |
 | `POST /respostas` | `mensagemId`, `versao` e a resposta (`valor` ou `opcao`) |
-| `PATCH /campos/{campo}` | Corrige um campo já respondido (`versao` e a nova resposta) |
+| `PATCH /campos/{campo}` | Edita um campo já respondido, em qualquer etapa (`versao` e a nova resposta) |
 | `GET /revisao` | Resumo por seções, pendências e a versão a revisar |
 | `POST /confirmacao` | `versaoRevisada` e `chaveIdempotencia`. Grava e devolve o comprovante |
 | `DELETE /sessao` | Encerra a sessão e remove o rascunho. Não apaga cadastro confirmado |
@@ -195,7 +195,7 @@ O teste de ponta a ponta do fluxo, da API até o banco, está em `ConfirmacaoTes
 ## Decisões
 
 - **Mistral no lugar de Qwen/Hugging Face.** A ata de requisitos prevê Qwen via Hugging Face Inference Providers. Optou-se por usar a **Mistral por um adaptador compatível com Chat Completions**, mantendo o restante da ata (contrato de saída, validações, fallback, privacidade). Como o adaptador só depende de URL, modelo e chave, o Hugging Face ou qualquer outro endpoint compatível pode ser usado sem mudança de código.
-- **Sem biblioteca de UI.** O tema da Defensoria é aplicado diretamente em CSS com tokens, evitando sobrescrever o tema padrão de uma biblioteca.
+- **Material UI só onde ajuda.** Apenas o `Stepper` vem de uma biblioteca pronta, com o tema da Defensoria aplicado por cima (a ata exige que o tema padrão da biblioteca não apareça). Cartões, chat, painel e formulários são CSS próprio com os mesmos tokens, o que mantém o pacote pequeno.
 - **Sessão própria em vez de `HttpSession`.** O segredo vai só no cookie e o banco guarda o hash, o que permite expirar e limpar sessões por consulta.
 - **Retomada.** Ao recarregar a página, a conversa em memória se perde e **Começar** abre uma nova sessão. É consequência de não persistir a transcrição.
 
