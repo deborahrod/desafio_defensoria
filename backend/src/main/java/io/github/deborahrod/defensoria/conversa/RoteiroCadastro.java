@@ -10,6 +10,7 @@ import io.github.deborahrod.defensoria.cadastro.Campo;
 import io.github.deborahrod.defensoria.cadastro.MotivoAusencia;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastro;
 import io.github.deborahrod.defensoria.conversa.Pergunta.Alternativa;
+import io.github.deborahrod.defensoria.integracao.PropriedadesLlm;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -26,6 +27,8 @@ public class RoteiroCadastro {
     public static final String OUTRA_PESSOA = "OUTRA_PESSOA";
     public static final String SIM = "SIM";
     public static final String NAO = "NAO";
+    public static final String USAR_IA = "USAR_IA";
+    public static final String ESTRUTURADO = "ESTRUTURADO";
 
     private static final Alternativa NAO_SEI = ausencia("NAO_SEI", "Não sei informar", MotivoAusencia.DESCONHECIDO);
     private static final Alternativa PULAR = ausencia("PULAR", "Pular", MotivoAusencia.OPCIONAL_NAO_PREENCHIDO);
@@ -34,7 +37,14 @@ public class RoteiroCadastro {
             "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
             "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO");
 
-    private final List<Pergunta> perguntas = List.of(
+    private final List<Pergunta> perguntas;
+
+    public RoteiroCadastro(PropriedadesLlm llm) {
+        this.perguntas = montar(llm.disponivel());
+    }
+
+    private static List<Pergunta> montar(boolean iaDisponivel) {
+        return List.of(
             Pergunta.de(PARA_QUEM, QUEM_PREENCHE, "Cadastro para", TipoEntrada.ESCOLHA)
                     .perguntar("Este cadastro é para você ou para outra pessoa?")
                     .alternativas(
@@ -119,7 +129,18 @@ public class RoteiroCadastro {
                     .validar(Validadores::telefoneOuEmail, 254)
                     .quando(RoteiroCadastro::contatoPorReferencia),
 
+            Pergunta.de(AVISO_IA, LOCALIZACAO, "Assistência por IA", TipoEntrada.ESCOLHA)
+                    .perguntar("Posso usar inteligência artificial para entender melhor as próximas respostas escritas?")
+                    .ajuda("O que você escrever sobre município e ocupação será enviado a um serviço externo de IA, "
+                            + "que sugere o que preencher. CPF, nascimento, telefone, e-mail e endereço não são "
+                            + "enviados. Você revisa tudo antes de confirmar e pode seguir com perguntas diretas.")
+                    .alternativas(
+                            valor(USAR_IA, "Usar assistência por IA"),
+                            valor(ESTRUTURADO, "Continuar com perguntas estruturadas"))
+                    .foraDoResumo()
+                    .quando(rascunho -> iaDisponivel),
             Pergunta.de(MUNICIPIO, LOCALIZACAO, "Município ou localidade", TipoEntrada.TEXTO)
+                    .interpretavelPorIa("município ou localidade onde a pessoa está")
                     .perguntar("Em qual município ou localidade você está?", "Em qual município ou localidade a pessoa está?")
                     .validar(Validadores.texto(120), 120)
                     .alternativas(NAO_SEI),
@@ -169,6 +190,7 @@ public class RoteiroCadastro {
                     .quando(rascunho -> rascunho.tem(ENDERECO_FIXO, NAO)),
 
             Pergunta.de(OCUPACAO, SOCIOECONOMICO, "Ocupação", TipoEntrada.TEXTO)
+                    .interpretavelPorIa("ocupação ou situação de trabalho atual, como desempregada, autônomo ou aposentada")
                     .perguntar("Qual é a sua ocupação ou trabalho atual?", "Qual é a ocupação ou trabalho atual da pessoa?")
                     .ajuda("Vale responder, por exemplo, desempregado(a), do lar, aposentado(a) ou autônomo(a).")
                     .validar(Validadores.texto(120), 120)
@@ -194,6 +216,7 @@ public class RoteiroCadastro {
             Pergunta.de(SITUACAO_MORADIA, SOCIOECONOMICO, "Moradia", TipoEntrada.ESCOLHA)
                     .perguntar("Como é a sua moradia hoje?", "Como é a moradia da pessoa hoje?")
                     .alternativas(RoteiroCadastro::moradias));
+    }
 
     public Optional<Pergunta> proxima(RascunhoCadastro rascunho) {
         return aplicaveis(rascunho).filter(pergunta -> !rascunho.respondido(pergunta.campo())).findFirst();

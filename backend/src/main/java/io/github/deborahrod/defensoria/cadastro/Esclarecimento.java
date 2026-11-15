@@ -11,6 +11,7 @@ public record Esclarecimento(
         Tipo tipo, Map<String, String> valores, Map<String, String> ausencias, List<String> afetados) {
 
     public enum Tipo {
-        CONFIRMAR_LIMPEZA
+        CONFIRMAR_LIMPEZA,
+        CONFIRMAR_INTERPRETACAO
     }
 }

@@ -40,6 +40,8 @@ public final class Pergunta {
     private String ajuda;
     private Integer tamanhoMaximo;
     private boolean opcional;
+    private String descricaoIa;
+    private boolean noResumo = true;
     private Validador validador;
     private Predicate<RascunhoCadastro> aplicavel = rascunho -> true;
     private Function<RascunhoCadastro, List<Alternativa>> alternativas = rascunho -> List.of();
@@ -73,6 +75,18 @@ public final class Pergunta {
     Pergunta validar(Validador validador, int tamanhoMaximo) {
         this.validador = validador;
         this.tamanhoMaximo = tamanhoMaximo;
+        return this;
+    }
+
+    /** Texto livre que a assistência por IA pode interpretar, com a descrição enviada ao modelo. */
+    Pergunta interpretavelPorIa(String descricao) {
+        this.descricaoIa = descricao;
+        return this;
+    }
+
+    /** Pergunta só da conversa: não é dado do cadastro e não aparece na revisão. */
+    Pergunta foraDoResumo() {
+        this.noResumo = false;
         return this;
     }
 
@@ -175,6 +189,18 @@ public final class Pergunta {
 
     public Integer tamanhoMaximo() {
         return tamanhoMaximo;
+    }
+
+    public boolean interpretavelPorIa() {
+        return descricaoIa != null;
+    }
+
+    public String descricaoIa() {
+        return descricaoIa;
+    }
+
+    public boolean noResumo() {
+        return noResumo;
     }
 
     public boolean opcional() {

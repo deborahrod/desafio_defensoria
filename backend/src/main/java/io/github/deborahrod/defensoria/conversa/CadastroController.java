@@ -52,13 +52,19 @@ class CadastroController {
 
     private final ServicoSessao sessoes;
     private final ServicoConversa conversa;
+    private final ServicoResposta respostas;
     private final ServicoConfirmacao confirmacao;
     private final CookieSessao cookies;
 
     CadastroController(
-            ServicoSessao sessoes, ServicoConversa conversa, ServicoConfirmacao confirmacao, CookieSessao cookies) {
+            ServicoSessao sessoes,
+            ServicoConversa conversa,
+            ServicoResposta respostas,
+            ServicoConfirmacao confirmacao,
+            CookieSessao cookies) {
         this.sessoes = sessoes;
         this.conversa = conversa;
+        this.respostas = respostas;
         this.confirmacao = confirmacao;
         this.cookies = cookies;
     }
@@ -82,7 +88,7 @@ class CadastroController {
 
     @PostMapping("/respostas")
     EstadoConversa responder(SessaoCadastro sessao, @Valid @RequestBody RespostaRequest corpo) {
-        return conversa.responder(sessao.getId(), corpo.mensagemId(), corpo.versao(), corpo.entrada());
+        return respostas.responder(sessao.getId(), corpo.mensagemId(), corpo.versao(), corpo.entrada());
     }
 
     @PatchMapping("/campos/{campo}")

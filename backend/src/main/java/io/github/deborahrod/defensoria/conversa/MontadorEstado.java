@@ -73,6 +73,7 @@ public class MontadorEstado {
     public List<SecaoResumo> resumo(RascunhoCadastro rascunho) {
         var porSecao = new LinkedHashMap<Secao, List<ItemResumo>>();
         roteiro.aplicaveis(rascunho)
+                .filter(Pergunta::noResumo)
                 .filter(pergunta -> rascunho.respondido(pergunta.campo()))
                 .forEach(pergunta -> porSecao
                         .computeIfAbsent(pergunta.secao(), secao -> new ArrayList<>())
@@ -109,6 +110,9 @@ public class MontadorEstado {
     }
 
     private ProximaPergunta perguntarSobre(Esclarecimento pendente) {
+        if (pendente.tipo() == Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO) {
+            return confirmarInterpretacao(pendente);
+        }
         var alterado = Stream.concat(pendente.valores().keySet().stream(), pendente.ausencias().keySet().stream())
                 .findFirst()
                 .orElseThrow();
@@ -123,6 +127,19 @@ public class MontadorEstado {
                 null,
                 TipoEntrada.ESCOLHA,
                 List.of(new Opcao(CONFIRMAR, "Sim, alterar"), new Opcao(MANTER, "Não, manter como está")),
+                null);
+    }
+
+    private ProximaPergunta confirmarInterpretacao(Esclarecimento pendente) {
+        var entendido = pendente.valores().entrySet().stream()
+                .map(e -> roteiro.rotulo(Campo.deId(e.getKey()).orElseThrow()) + ": " + e.getValue())
+                .collect(Collectors.joining("; "));
+        return new ProximaPergunta(
+                pendente.valores().keySet().iterator().next(),
+                "Entendi assim: " + entendido + ". Está certo?",
+                null,
+                TipoEntrada.ESCOLHA,
+                List.of(new Opcao(CONFIRMAR, "Sim, está certo"), new Opcao(MANTER, "Não, vou responder de novo")),
                 null);
     }
 
