@@ -145,10 +145,11 @@ public class MontadorEstado {
 
     private Progresso progresso(RascunhoCadastro rascunho, Optional<Pergunta> proxima) {
         var secoes = roteiro.aplicaveis(rascunho).map(Pergunta::secao).distinct().toList();
+        var titulos = secoes.stream().map(Secao::titulo).toList();
         return proxima
                 .map(pergunta -> new Progresso(
-                        secoes.indexOf(pergunta.secao()) + 1, secoes.size(), pergunta.secao().titulo()))
-                .orElseGet(() -> new Progresso(secoes.size(), secoes.size(), "Revisão"));
+                        secoes.indexOf(pergunta.secao()) + 1, secoes.size(), pergunta.secao().titulo(), titulos))
+                .orElseGet(() -> new Progresso(secoes.size(), secoes.size(), "Revisão", titulos));
     }
 
     private ItemResumo item(Pergunta pergunta, RascunhoCadastro rascunho) {

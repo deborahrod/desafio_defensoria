@@ -163,6 +163,8 @@ class ServicoConversaTest extends TesteIntegracao {
         assertThat(inicial.progresso().secao()).isEqualTo("Quem preenche");
         assertThat(depois.progresso().secao()).isEqualTo("Identificação");
         assertThat(depois.progresso().total()).isEqualTo(5);
+        assertThat(depois.progresso().secoes()).containsExactly(
+                "Quem preenche", "Identificação", "Contato", "Localização", "Situação socioeconômica");
     }
 
     private EstadoConversa responderTudo(List<RespostaEntrada> respostas) {

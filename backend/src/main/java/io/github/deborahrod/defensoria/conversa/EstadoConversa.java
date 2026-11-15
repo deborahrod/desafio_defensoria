@@ -29,7 +29,7 @@ public record EstadoConversa(
     }
 
     /** Posição entre as seções do cadastro. Não é percentual: o caminho muda conforme as respostas. */
-    public record Progresso(int etapa, int total, String secao) {
+    public record Progresso(int etapa, int total, String secao, List<String> secoes) {
     }
 
     public record SecaoResumo(String titulo, List<ItemResumo> itens) {
