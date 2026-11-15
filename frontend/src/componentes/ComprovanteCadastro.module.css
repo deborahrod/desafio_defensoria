@@ -1,0 +1,54 @@
+.comprovante {
+  display: grid;
+  gap: var(--espaco-4);
+  padding: var(--espaco-5);
+  border: 1px solid var(--cor-verde);
+  border-top-width: 6px;
+  border-radius: var(--raio-botao);
+}
+
+.titulo {
+  color: var(--cor-verde);
+  font-size: var(--texto-titulo);
+}
+
+.dados {
+  display: grid;
+  gap: var(--espaco-1);
+  margin: 0;
+}
+
+.dados dt {
+  font-size: var(--texto-pequeno);
+  font-weight: var(--peso-medio);
+}
+
+.dados dd {
+  margin: 0 0 var(--espaco-2);
+  color: var(--cor-texto-forte);
+  font-size: var(--texto-medio);
+}
+
+.identificador {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.aviso {
+  padding: var(--espaco-3);
+  background: var(--cor-fundo-suave);
+  border-radius: var(--raio-botao);
+  font-size: var(--texto-pequeno);
+}
+
+.encerrar {
+  justify-self: start;
+  min-height: 3rem;
+  padding: 0 var(--espaco-5);
+  border: 1px solid var(--cor-texto-forte);
+  border-radius: var(--raio-botao);
+  background: var(--cor-branco);
+  color: var(--cor-texto-forte);
+  font-weight: var(--peso-medio);
+  cursor: pointer;
+}

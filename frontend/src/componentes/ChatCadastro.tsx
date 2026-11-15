@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useConversa } from '../conversa/useConversa.ts'
 import estilos from './ChatCadastro.module.css'
+import ComprovanteCadastro from './ComprovanteCadastro.tsx'
 import EntradaConversa from './EntradaConversa.tsx'
+import ResumoCadastro from './ResumoCadastro.tsx'
 
 export default function ChatCadastro() {
   const conversa = useConversa()
-  const { estado, transcricao, enviando, falha, encerrada } = conversa
+  const { estado, transcricao, enviando, falha, recusa, encerrada } = conversa
   const [confirmandoSaida, setConfirmandoSaida] = useState(false)
 
   if (!estado && !encerrada) {
@@ -20,10 +22,11 @@ export default function ChatCadastro() {
   }
 
   const pergunta = estado?.proximaPergunta
+  const confirmado = estado?.estado === 'CONFIRMADO' && estado.comprovante
 
   return (
     <section className={estilos.chat} aria-label="Conversa do cadastro">
-      {estado?.progresso && (
+      {estado?.progresso && !confirmado && (
         <p className={estilos.progresso}>
           Etapa {estado.progresso.etapa} de {estado.progresso.total}: {estado.progresso.secao}
         </p>
@@ -44,13 +47,16 @@ export default function ChatCadastro() {
             Começar um novo cadastro
           </button>
         </div>
+      ) : confirmado ? (
+        <ComprovanteCadastro comprovante={estado.comprovante!} desabilitado={enviando} aoEncerrar={conversa.cancelar} />
+      ) : estado?.estado === 'EM_REVISAO' ? (
+        <ResumoCadastro estado={estado} desabilitado={enviando} aoCorrigir={conversa.corrigir} aoConfirmar={conversa.confirmar} />
       ) : pergunta ? (
         <EntradaConversa key={`${pergunta.campo}-${estado?.versao}`} pergunta={pergunta} desabilitado={enviando} aoEnviar={conversa.enviar} />
-      ) : (
-        <p className={estilos.aviso}>Você respondeu todas as perguntas.</p>
-      )}
+      ) : null}
 
       {enviando && <p className={estilos.status} role="status">Enviando…</p>}
+      {recusa && <p role="alert" className={estilos.erro}>{recusa}</p>}
       {falha && (
         <div role="alert" className={estilos.erro}>
           <p>{falha}</p>
@@ -60,7 +66,7 @@ export default function ChatCadastro() {
         </div>
       )}
 
-      {!encerrada && (
+      {!encerrada && !confirmado && (
         <div className={estilos.saida}>
           {confirmandoSaida ? (
             <>
