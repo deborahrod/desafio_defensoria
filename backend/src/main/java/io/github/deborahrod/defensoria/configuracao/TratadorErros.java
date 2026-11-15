@@ -3,7 +3,12 @@ package io.github.deborahrod.defensoria.configuracao;
 import io.github.deborahrod.defensoria.cadastro.CookieSessao;
 import io.github.deborahrod.defensoria.cadastro.SessaoExpiradaException;
 import io.github.deborahrod.defensoria.cadastro.SessaoInexistenteException;
+import io.github.deborahrod.defensoria.conversa.EstadoInvalidoException;
+import io.github.deborahrod.defensoria.conversa.RespostaInvalidaException;
+import io.github.deborahrod.defensoria.conversa.VersaoDesatualizadaException;
 import org.slf4j.Logger;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -39,6 +44,31 @@ class TratadorErros extends ResponseEntityExceptionHandler {
                         "SESSAO_EXPIRADA",
                         "Sua sessão expirou por inatividade e os dados não confirmados foram apagados. "
                                 + "Inicie um novo cadastro."));
+    }
+
+    @ExceptionHandler(RespostaInvalidaException.class)
+    ResponseEntity<ErroResposta> respostaInvalida(RespostaInvalidaException erro) {
+        return ResponseEntity.badRequest()
+                .body(new ErroResposta("RESPOSTA_INVALIDA", erro.getMessage(), erro.getCampo()));
+    }
+
+    @ExceptionHandler({VersaoDesatualizadaException.class, ObjectOptimisticLockingFailureException.class})
+    ResponseEntity<ErroResposta> versaoDesatualizada() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta(
+                "VERSAO_DESATUALIZADA", "O cadastro mudou desde a última tela. Atualize para ver o estado atual."));
+    }
+
+    @ExceptionHandler(EstadoInvalidoException.class)
+    ResponseEntity<ErroResposta> estadoInvalido(EstadoInvalidoException erro) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErroResposta("ESTADO_INVALIDO", erro.getMessage()));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException erro, HttpHeaders cabecalhos, HttpStatusCode status, WebRequest requisicao) {
+        var campo = erro.getBindingResult().getFieldErrors().stream().map(e -> e.getField()).findFirst().orElse(null);
+        return ResponseEntity.badRequest().body(new ErroResposta(
+                "REQUISICAO_INVALIDA", "Confira os dados enviados e tente novamente.", campo));
     }
 
     @ExceptionHandler(Exception.class)

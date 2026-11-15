@@ -207,6 +207,14 @@ public class RoteiroCadastro {
         return perguntas.stream().filter(pergunta -> pergunta.aplicavel(rascunho));
     }
 
+    public String rotulo(Campo campo) {
+        return perguntas.stream()
+                .filter(pergunta -> pergunta.campo() == campo)
+                .map(Pergunta::rotulo)
+                .findFirst()
+                .orElseThrow();
+    }
+
     public static boolean paraOutraPessoa(RascunhoCadastro rascunho) {
         return rascunho.tem(PARA_QUEM, OUTRA_PESSOA);
     }

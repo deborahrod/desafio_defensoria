@@ -1,6 +1,8 @@
 package io.github.deborahrod.defensoria.conversa;
 
 import io.github.deborahrod.defensoria.cadastro.Campo;
+import io.github.deborahrod.defensoria.cadastro.ConfirmacaoCadastro;
+import io.github.deborahrod.defensoria.cadastro.Esclarecimento;
 import io.github.deborahrod.defensoria.cadastro.MotivoAusencia;
 import io.github.deborahrod.defensoria.cadastro.PropriedadesSessao;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastro;
@@ -14,10 +16,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 
 @Component
 public class MontadorEstado {
+
+    static final String CONFIRMAR = "CONFIRMAR";
+    static final String MANTER = "MANTER";
 
     private final RoteiroCadastro roteiro;
     private final PropriedadesSessao propriedades;
@@ -29,17 +36,50 @@ public class MontadorEstado {
 
     public EstadoConversa montar(SessaoCadastro sessao, RascunhoCadastro rascunho, List<String> avisos) {
         var proxima = roteiro.proxima(rascunho);
+        var pergunta = rascunho.esclarecimento()
+                .map(this::perguntarSobre)
+                .or(() -> proxima.map(seguinte -> apresentar(seguinte, rascunho)))
+                .orElse(null);
         return new EstadoConversa(
                 sessao.getEstado(),
                 sessao.getModoInteracao(),
                 rascunho.getVersao(),
-                proxima.map(pergunta -> apresentar(pergunta, rascunho)).orElse(null),
+                pergunta,
                 progresso(rascunho, proxima),
                 resumo(rascunho),
                 pendencias(rascunho),
                 avisos,
+                null,
                 sessao.getExpiraEm(),
                 propriedades.expiracao().toMinutes());
+    }
+
+    /** Depois da confirmação o rascunho não existe mais: resta o comprovante. */
+    public EstadoConversa montarConfirmado(SessaoCadastro sessao, ConfirmacaoCadastro confirmacao) {
+        return new EstadoConversa(
+                sessao.getEstado(),
+                sessao.getModoInteracao(),
+                confirmacao.getVersaoRevisada(),
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                Comprovante.de(confirmacao),
+                sessao.getExpiraEm(),
+                propriedades.expiracao().toMinutes());
+    }
+
+    public List<SecaoResumo> resumo(RascunhoCadastro rascunho) {
+        var porSecao = new LinkedHashMap<Secao, List<ItemResumo>>();
+        roteiro.aplicaveis(rascunho)
+                .filter(pergunta -> rascunho.respondido(pergunta.campo()))
+                .forEach(pergunta -> porSecao
+                        .computeIfAbsent(pergunta.secao(), secao -> new ArrayList<>())
+                        .add(item(pergunta, rascunho)));
+        return porSecao.entrySet().stream()
+                .map(secao -> new SecaoResumo(secao.getKey().titulo(), secao.getValue()))
+                .toList();
     }
 
     public List<String> pendencias(RascunhoCadastro rascunho) {
@@ -68,24 +108,30 @@ public class MontadorEstado {
                 pergunta.tamanhoMaximo());
     }
 
+    private ProximaPergunta perguntarSobre(Esclarecimento pendente) {
+        var alterado = Stream.concat(pendente.valores().keySet().stream(), pendente.ausencias().keySet().stream())
+                .findFirst()
+                .orElseThrow();
+        var apagados = pendente.afetados().stream()
+                .map(id -> roteiro.rotulo(Campo.deId(id).orElseThrow()))
+                .collect(Collectors.joining(", "));
+        var texto = "Ao alterar \"" + roteiro.rotulo(Campo.deId(alterado).orElseThrow())
+                + "\", estas informações serão apagadas: " + apagados + ". Deseja continuar?";
+        return new ProximaPergunta(
+                alterado,
+                texto,
+                null,
+                TipoEntrada.ESCOLHA,
+                List.of(new Opcao(CONFIRMAR, "Sim, alterar"), new Opcao(MANTER, "Não, manter como está")),
+                null);
+    }
+
     private Progresso progresso(RascunhoCadastro rascunho, Optional<Pergunta> proxima) {
         var secoes = roteiro.aplicaveis(rascunho).map(Pergunta::secao).distinct().toList();
         return proxima
                 .map(pergunta -> new Progresso(
                         secoes.indexOf(pergunta.secao()) + 1, secoes.size(), pergunta.secao().titulo()))
                 .orElseGet(() -> new Progresso(secoes.size(), secoes.size(), "Revisão"));
-    }
-
-    private List<SecaoResumo> resumo(RascunhoCadastro rascunho) {
-        var porSecao = new LinkedHashMap<Secao, List<ItemResumo>>();
-        roteiro.aplicaveis(rascunho)
-                .filter(pergunta -> rascunho.respondido(pergunta.campo()))
-                .forEach(pergunta -> porSecao
-                        .computeIfAbsent(pergunta.secao(), secao -> new ArrayList<>())
-                        .add(item(pergunta, rascunho)));
-        return porSecao.entrySet().stream()
-                .map(secao -> new SecaoResumo(secao.getKey().titulo(), secao.getValue()))
-                .toList();
     }
 
     private ItemResumo item(Pergunta pergunta, RascunhoCadastro rascunho) {

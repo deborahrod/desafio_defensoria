@@ -127,6 +127,10 @@ public final class Pergunta {
         return validador != null && validador.validar(valor, contexto) instanceof Validacao.Aceita;
     }
 
+    public boolean aceitaAusencia(MotivoAusencia motivo, RascunhoCadastro rascunho) {
+        return alternativas.apply(rascunho).stream().anyMatch(alternativa -> alternativa.ausencia() == motivo);
+    }
+
     public String exibir(String valor, RascunhoCadastro rascunho) {
         return alternativas.apply(rascunho).stream()
                 .filter(alternativa -> valor.equals(alternativa.valor()))

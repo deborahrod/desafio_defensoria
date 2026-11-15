@@ -15,6 +15,7 @@ public record EstadoConversa(
         List<SecaoResumo> resumo,
         List<String> pendencias,
         List<String> avisos,
+        Comprovante comprovante,
         Instant expiraEm,
         long minutosDeInatividade) {
 
