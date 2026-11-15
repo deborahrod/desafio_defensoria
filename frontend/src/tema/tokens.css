@@ -1,0 +1,39 @@
+/* Valores extraídos dos estilos de www2.defensoria.go.def.br */
+:root {
+  --cor-verde: #007b2f;
+  --cor-verde-escuro: #006928;
+  --cor-verde-claro: #95ae23;
+  --cor-verde-claro-suave: rgb(149 174 35 / 13%);
+  --cor-branco: #ffffff;
+  --cor-texto: #565656;
+  --cor-texto-forte: #4a4949;
+  --cor-fundo: #ffffff;
+  --cor-fundo-suave: #f3f3f3;
+  --cor-fundo-faixa: #ececec;
+  --cor-borda: #cccccc;
+  --cor-erro: #c53030;
+
+  --fonte-base: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --texto-pequeno: 0.875rem;
+  --texto-base: 1rem;
+  --texto-medio: 1.125rem;
+  --texto-titulo: 1.5625rem;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-forte: 700;
+
+  --espaco-1: 0.25rem;
+  --espaco-2: 0.5rem;
+  --espaco-3: 0.75rem;
+  --espaco-4: 1rem;
+  --espaco-5: 1.5rem;
+  --espaco-6: 2rem;
+
+  --raio-botao: 10px;
+  --raio-pilula: 20px;
+  --sombra-suave: 0 5px 10px -5px #777777;
+  --foco: 0 0 0 3px var(--cor-branco), 0 0 0 6px var(--cor-verde-escuro);
+
+  --largura-pagina: 71.25rem;
+  --largura-conversa: 45rem;
+}
