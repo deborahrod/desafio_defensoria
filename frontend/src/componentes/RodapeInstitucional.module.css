@@ -1,0 +1,38 @@
+.rodape {
+  background: var(--cor-fundo-suave);
+}
+
+.conteudo {
+  display: grid;
+  gap: var(--espaco-5);
+  max-width: var(--largura-pagina);
+  margin: 0 auto;
+  padding: var(--espaco-5) var(--espaco-4);
+  text-align: center;
+}
+
+.logo {
+  width: auto;
+  height: 4rem;
+  margin: 0 auto;
+}
+
+.titulo {
+  margin-bottom: var(--espaco-2);
+  color: var(--cor-texto);
+  font-size: var(--texto-medio);
+}
+
+.aviso {
+  padding: var(--espaco-3) var(--espaco-4);
+  background: var(--cor-fundo-faixa);
+  font-size: var(--texto-pequeno);
+  text-align: center;
+}
+
+@media (min-width: 48rem) {
+  .conteudo {
+    grid-template-columns: auto 1fr 1fr;
+    align-items: center;
+  }
+}

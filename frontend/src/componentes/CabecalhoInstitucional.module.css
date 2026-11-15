@@ -1,0 +1,77 @@
+.cabecalho {
+  background: var(--cor-fundo);
+  border-bottom: 4px solid var(--cor-verde-claro);
+}
+
+.barra {
+  border-bottom: 1px solid var(--cor-fundo-faixa);
+}
+
+.barraConteudo,
+.principal {
+  max-width: var(--largura-pagina);
+  margin: 0 auto;
+  padding: 0 var(--espaco-4);
+}
+
+.barraConteudo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-3);
+  min-height: 2.5rem;
+}
+
+.linkPortal {
+  padding: var(--espaco-1) var(--espaco-3);
+  border-radius: var(--raio-pilula);
+  color: var(--cor-texto-forte);
+  font-size: var(--texto-pequeno);
+  text-decoration: none;
+}
+
+.linkPortal:hover {
+  background: var(--cor-verde-claro-suave);
+  color: var(--cor-texto-forte);
+}
+
+.selo {
+  padding: 1px var(--espaco-3);
+  border: 1px solid var(--cor-verde-claro);
+  border-radius: var(--raio-pilula);
+  color: var(--cor-texto);
+  font-size: var(--texto-pequeno);
+}
+
+.principal {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-4);
+  padding-top: var(--espaco-3);
+  padding-bottom: var(--espaco-3);
+}
+
+.logo {
+  flex: none;
+  width: auto;
+  height: 3.5rem;
+}
+
+.servico {
+  padding-left: var(--espaco-4);
+  border-left: 2px solid var(--cor-verde);
+  color: var(--cor-texto-forte);
+  font-size: var(--texto-medio);
+  font-weight: var(--peso-medio);
+  line-height: 1.2;
+}
+
+@media (min-width: 48rem) {
+  .logo {
+    height: 5rem;
+  }
+
+  .servico {
+    font-size: var(--texto-titulo);
+  }
+}
