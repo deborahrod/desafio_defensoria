@@ -6,7 +6,8 @@ const api = process.env.API_URL ?? 'http://localhost:8081'
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: { '/api': api },
+    // O Host original é mantido: com ele trocado, o CORS da API trataria a chamada como de outra origem.
+    proxy: { '/api': { target: api, changeOrigin: false } },
   },
   test: {
     environment: 'jsdom',
