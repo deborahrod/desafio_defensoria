@@ -106,8 +106,14 @@ public class ServicoConfirmacao {
                     agora));
         }
         var comPendencias = !montador.pendencias(rascunho).isEmpty();
-        var confirmacao = confirmacoes.saveAndFlush(new ConfirmacaoCadastro(
-                sessaoId, versaoRevisada, chaveIdempotencia, pessoa.getId(), comPendencias, agora));
+        ConfirmacaoCadastro confirmacao;
+        try {
+            confirmacao = confirmacoes.saveAndFlush(new ConfirmacaoCadastro(
+                    sessaoId, versaoRevisada, chaveIdempotencia, pessoa.getId(), comPendencias, agora));
+        } catch (DataIntegrityViolationException e) {
+            // Por exemplo, chave de idempotência já usada por outra sessão: nada do que foi gravado fica.
+            throw conflito();
+        }
 
         sessao.mudarPara(EstadoSessao.CONFIRMADO);
         rascunhos.delete(rascunho);
