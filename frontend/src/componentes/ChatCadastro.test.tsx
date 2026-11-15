@@ -241,3 +241,19 @@ test('aviso de falha da IA chega como mensagem da conversa e o modo volta a ser 
   expect(screen.getByText('Perguntas diretas, sem uso de IA.')).toBeInTheDocument()
   expect(screen.getByLabelText('Sua resposta')).toBeInTheDocument()
 })
+
+test('limite de respostas mostra o aviso e permite tentar de novo com o mesmo mensagemId', async () => {
+  fetchSimulado
+    .mockResolvedValueOnce(json(estado(0, PARA_QUEM), 201))
+    .mockResolvedValueOnce(json({ codigo: 'LIMITE_EXCEDIDO', mensagem: 'Muitas respostas em pouco tempo. Aguarde 20 segundos e tente de novo.' }, 429))
+    .mockResolvedValueOnce(json(estado(1, NOME)))
+  const usuario = await comecar()
+
+  await usuario.click(screen.getByRole('button', { name: 'Para mim' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Aguarde 20 segundos')
+  expect(screen.getByText(PARA_QUEM.texto)).toBeInTheDocument()
+  await usuario.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+
+  await screen.findByText('Como você se chama?')
+  expect(corpoEnviado(2).mensagemId).toBe(corpoEnviado(1).mensagemId)
+})

@@ -29,6 +29,11 @@ services:
       SESSAO_EXPIRACAO_MINUTOS: ${SESSAO_EXPIRACAO_MINUTOS:-30}
       SESSAO_COOKIE_SEGURO: ${SESSAO_COOKIE_SEGURO:-false}
       CORS_ORIGENS: ${CORS_ORIGENS:-}
+      LIMITE_RESPOSTAS_POR_SESSAO: ${LIMITE_RESPOSTAS_POR_SESSAO:-60}
+      LIMITE_RESPOSTAS_POR_MINUTO: ${LIMITE_RESPOSTAS_POR_MINUTO:-10}
+      LIMITE_REQUISICOES_POR_ORIGEM_POR_MINUTO: ${LIMITE_REQUISICOES_POR_ORIGEM_POR_MINUTO:-120}
+      # O nginx do serviço web é o proxy confiável: o endereço de origem vem do X-Forwarded-For dele.
+      LIMITES_CONFIAR_EM_PROXY: "true"
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.mistral.ai/v1}
       LLM_MODEL: ${LLM_MODEL:-mistral-small-latest}
