@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.deborahrod.defensoria.Navegador;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.test.web.servlet.ResultActions;
@@ -13,6 +14,8 @@ public final class ParticipanteApi {
 
     public final Navegador navegador;
     public int versao;
+    /** Tudo o que o servidor devolveu a este participante: corpos e cabeçalhos, em texto. */
+    public final List<String> recebido = new ArrayList<>();
 
     public ParticipanteApi(Navegador navegador) {
         this.navegador = navegador;
@@ -62,6 +65,8 @@ public final class ParticipanteApi {
     private ResultActions guardar(ResultActions resposta) throws Exception {
         var http = resposta.andReturn().getResponse();
         var corpo = http.getContentAsString();
+        recebido.add(corpo);
+        http.getHeaderNames().forEach(nome -> recebido.add(nome + ": " + http.getHeaders(nome)));
         if (http.getStatus() < 300 && corpo.contains("\"versao\"")) {
             versao = JsonPath.read(corpo, "$.versao");
         }
