@@ -14,6 +14,15 @@ spring:
         jdbc:
           time_zone: UTC
 
+cadastro:
+  sessao:
+    expiracao: ${SESSAO_EXPIRACAO_MINUTOS:30}m
+    cookie-seguro: ${SESSAO_COOKIE_SEGURO:false}
+    intervalo-limpeza: 5m
+    retencao-encerradas: 24h
+  cors:
+    origens: ${CORS_ORIGENS:}
+
 server:
   port: 8081
   error:

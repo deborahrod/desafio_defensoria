@@ -55,6 +55,14 @@ public class SessaoCadastro {
         return !agora.isBefore(expiraEm);
     }
 
+    public void expirar() {
+        this.estado = EstadoSessao.EXPIRADO;
+    }
+
+    public void cancelar() {
+        this.estado = EstadoSessao.CANCELADO;
+    }
+
     public UUID getId() {
         return id;
     }
