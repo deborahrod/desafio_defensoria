@@ -40,13 +40,15 @@ export default function ChatCadastro() {
         </p>
       )}
 
-      <ol className={estilos.mensagens} role="log" aria-live="polite" aria-label="Mensagens">
-        {transcricao.map((m) => (
-          <li key={m.id} className={`${estilos.mensagem} ${m.autor === 'pessoa' ? estilos.pessoa : estilos.sistema} ${m.erro ? estilos.recusada : ''}`}>
-            <span className={estilos.autor}>{m.autor === 'pessoa' ? 'Você' : 'Defensoria'}:</span> {m.texto}
-          </li>
-        ))}
-      </ol>
+      <div role="log" aria-live="polite" aria-label="Mensagens">
+        <ol className={estilos.mensagens}>
+          {transcricao.map((m) => (
+            <li key={m.id} className={`${estilos.mensagem} ${m.autor === 'pessoa' ? estilos.pessoa : estilos.sistema} ${m.erro ? estilos.recusada : ''}`}>
+              <span className={estilos.autor}>{m.autor === 'pessoa' ? 'Você' : 'Defensoria'}:</span> {m.texto}
+            </li>
+          ))}
+        </ol>
+      </div>
 
       {encerrada ? (
         <div role="alert" className={estilos.aviso}>

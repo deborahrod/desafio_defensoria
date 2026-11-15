@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Entrada, EstadoConversa, ItemResumo } from '../api/tipos.ts'
 import EntradaConversa from './EntradaConversa.tsx'
 import estilos from './ResumoCadastro.module.css'
@@ -14,6 +14,10 @@ interface Props {
 export default function ResumoCadastro({ estado, desabilitado, aoCorrigir, aoConfirmar }: Props) {
   const [edicao, setEdicao] = useState<{ campo: string; versao: number } | null>(null)
   const idTitulo = useId()
+  const titulo = useRef<HTMLHeadingElement>(null)
+
+  // Ao abrir a revisão e a cada alteração aceita, o foco vai ao título: quem usa só o teclado não o perde.
+  useEffect(() => titulo.current?.focus(), [estado.versao])
 
   // Cada alteração aceita gera nova versão, e uma edição aberta em versão antiga deixa de valer.
   const editando = edicao?.versao === estado.versao ? edicao.campo : null
@@ -21,7 +25,7 @@ export default function ResumoCadastro({ estado, desabilitado, aoCorrigir, aoCon
 
   return (
     <section className={estilos.resumo} aria-labelledby={idTitulo}>
-      <h2 id={idTitulo} className={estilos.titulo}>
+      <h2 id={idTitulo} ref={titulo} tabIndex={-1} className={estilos.titulo}>
         Revise seus dados
       </h2>
       <p>
@@ -44,12 +48,14 @@ export default function ResumoCadastro({ estado, desabilitado, aoCorrigir, aoCon
       {estado.resumo.map((secao) => (
         <section key={secao.titulo} className={estilos.cartao} aria-label={secao.titulo}>
           <h3 className={estilos.secao}>{secao.titulo}</h3>
-          <dl className={estilos.itens}>
+          <ul className={estilos.itens}>
             {secao.itens.map((item) => (
-              <div key={item.campo} className={estilos.item} data-situacao={item.situacao}>
-                <dt className={estilos.rotulo}>{item.rotulo}</dt>
-                <dd className={estilos.valor}>{item.valor}</dd>
-                <dd className={estilos.acao}>
+              <li key={item.campo} className={estilos.item} data-situacao={item.situacao}>
+                <dl className={estilos.dado}>
+                  <dt className={estilos.rotulo}>{item.rotulo}</dt>
+                  <dd className={estilos.valor}>{item.valor}</dd>
+                </dl>
+                <div className={estilos.acao}>
                   <button
                     type="button"
                     className={estilos.corrigir}
@@ -60,7 +66,7 @@ export default function ResumoCadastro({ estado, desabilitado, aoCorrigir, aoCon
                   >
                     Corrigir
                   </button>
-                </dd>
+                </div>
                 {editando === item.campo && (
                   <div className={estilos.edicao}>
                     <p className={estilos.pergunta}>{item.edicao.texto}</p>
@@ -74,9 +80,9 @@ export default function ResumoCadastro({ estado, desabilitado, aoCorrigir, aoCon
                     </button>
                   </div>
                 )}
-              </div>
+              </li>
             ))}
-          </dl>
+          </ul>
         </section>
       ))}
 

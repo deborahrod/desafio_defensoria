@@ -41,6 +41,8 @@
   display: grid;
   gap: var(--espaco-3);
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .item {
@@ -51,8 +53,11 @@
   border-bottom: 1px solid var(--cor-fundo-faixa);
 }
 
+.dado {
+  margin: 0;
+}
+
 .rotulo {
-  grid-column: 1 / -1;
   font-size: var(--texto-pequeno);
   font-weight: var(--peso-medio);
 }

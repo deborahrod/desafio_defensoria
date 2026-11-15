@@ -35,7 +35,7 @@
 .alternativa {
   min-height: 2.75rem;
   padding: 0 var(--espaco-4);
-  border: 1px solid var(--cor-verde-claro);
+  border: 1px solid var(--cor-verde);
   border-radius: var(--raio-botao);
   background: var(--cor-branco);
   color: var(--cor-texto-forte);
