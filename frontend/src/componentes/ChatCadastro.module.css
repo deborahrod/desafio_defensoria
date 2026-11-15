@@ -1,0 +1,117 @@
+.inicio {
+  margin-top: var(--espaco-5);
+}
+
+.comecar {
+  min-height: 3rem;
+  padding: 0 var(--espaco-6);
+  border: 1px solid var(--cor-verde);
+  border-radius: var(--raio-botao);
+  background: var(--cor-verde);
+  color: var(--cor-branco);
+  font-size: var(--texto-medio);
+  font-weight: var(--peso-medio);
+  cursor: pointer;
+}
+
+.comecar:hover:not(:disabled) {
+  background: var(--cor-verde-escuro);
+}
+
+.comecar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chat {
+  display: grid;
+  gap: var(--espaco-4);
+}
+
+.progresso {
+  color: var(--cor-texto-forte);
+  font-size: var(--texto-pequeno);
+  font-weight: var(--peso-medio);
+}
+
+.mensagens {
+  display: grid;
+  gap: var(--espaco-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mensagem {
+  max-width: 90%;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-radius: var(--raio-botao);
+}
+
+.sistema {
+  justify-self: start;
+  background: var(--cor-fundo-suave);
+  border-left: 4px solid var(--cor-verde);
+}
+
+.pessoa {
+  justify-self: end;
+  background: var(--cor-verde-claro-suave);
+  border-right: 4px solid var(--cor-verde-claro);
+}
+
+.recusada {
+  border-left-color: var(--cor-erro);
+}
+
+.autor {
+  color: var(--cor-texto-forte);
+  font-weight: var(--peso-forte);
+}
+
+.aviso,
+.erro {
+  display: grid;
+  gap: var(--espaco-3);
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-botao);
+}
+
+.erro {
+  border-color: var(--cor-erro);
+  color: var(--cor-erro);
+}
+
+.status {
+  font-size: var(--texto-pequeno);
+}
+
+.secundario {
+  justify-self: start;
+  min-height: 2.75rem;
+  padding: 0 var(--espaco-4);
+  border: 1px solid var(--cor-texto-forte);
+  border-radius: var(--raio-botao);
+  background: var(--cor-branco);
+  color: var(--cor-texto-forte);
+  cursor: pointer;
+}
+
+.saida {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espaco-3);
+  padding-top: var(--espaco-3);
+  border-top: 1px solid var(--cor-fundo-faixa);
+}
+
+.link {
+  padding: var(--espaco-2) 0;
+  border: 0;
+  background: none;
+  color: var(--cor-texto);
+  text-decoration: underline;
+  cursor: pointer;
+}
