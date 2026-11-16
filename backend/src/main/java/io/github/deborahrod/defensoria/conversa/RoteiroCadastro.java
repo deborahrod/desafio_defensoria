@@ -139,12 +139,26 @@ public class RoteiroCadastro {
                             valor(ESTRUTURADO, "Continuar com perguntas estruturadas"))
                     .foraDoResumo()
                     .quando(rascunho -> iaDisponivel),
+            Pergunta.de(RELATO, LOCALIZACAO, "Relato", TipoEntrada.RELATO)
+                    .perguntar("Se preferir, conte em poucas linhas onde você mora, o que faz e quem mora com você. "
+                            + "Eu preencho vários campos de uma vez e você confere.")
+                    .ajuda("Não conte detalhes do seu caso: só esses dados. Máximo de 400 caracteres. "
+                            + "CPF, nascimento, telefone e e-mail são pedidos à parte.")
+                    .validar(Validadores.texto(400), 400)
+                    .comoOpcional()
+                    .alternativas(ausencia("PULAR_RELATO", "Prefiro responder pergunta por pergunta",
+                            MotivoAusencia.OPCIONAL_NAO_PREENCHIDO))
+                    .foraDoResumo()
+                    .quando(rascunho -> rascunho.tem(AVISO_IA, USAR_IA)),
             Pergunta.de(MUNICIPIO, LOCALIZACAO, "Município ou localidade", TipoEntrada.TEXTO)
                     .interpretavelPorIa("município ou localidade onde a pessoa está")
+                    .noRelato("município ou localidade onde a pessoa está")
                     .perguntar("Em qual município ou localidade você está?", "Em qual município ou localidade a pessoa está?")
                     .validar(Validadores.texto(120), 120)
                     .alternativas(NAO_SEI),
             Pergunta.de(UF, LOCALIZACAO, "Estado", TipoEntrada.LISTA)
+                    .sugeridaCom(MUNICIPIO)
+                    .noRelato("sigla do estado (UF) do município")
                     .perguntar("Em qual estado fica?")
                     .alternativas(Stream.concat(
                             UFS.stream().map(uf -> valor(uf, uf)), Stream.of(NAO_SEI)).toArray(Alternativa[]::new))
@@ -191,22 +205,26 @@ public class RoteiroCadastro {
 
             Pergunta.de(OCUPACAO, SOCIOECONOMICO, "Ocupação", TipoEntrada.TEXTO)
                     .interpretavelPorIa("ocupação ou situação de trabalho atual, como desempregada, autônomo ou aposentada")
+                    .noRelato("ocupação ou situação de trabalho atual, como desempregada, autônomo ou aposentada")
                     .perguntar("Qual é a sua ocupação ou trabalho atual?", "Qual é a ocupação ou trabalho atual da pessoa?")
                     .ajuda("Vale responder, por exemplo, desempregado(a), do lar, aposentado(a) ou autônomo(a).")
                     .validar(Validadores.texto(120), 120)
                     .alternativas(NAO_SEI),
             Pergunta.de(RENDA, SOCIOECONOMICO, "Renda mensal declarada", TipoEntrada.VALOR)
+                    .noRelato("renda mensal da pessoa, em reais, como número")
                     .perguntar("Você tem alguma renda mensal para informar?", "A pessoa tem alguma renda mensal para informar?")
                     .ajuda("Informe quanto recebe por mês, em reais. Vale salário, benefício, pensão ou bicos.")
                     .validar(Validadores::valorEmReais, 20)
                     .alternativas(valorFixo("SEM_RENDA", "Não tenho renda", "0.00"), NAO_SEI),
             Pergunta.de(QUANTIDADE_MEMBROS, SOCIOECONOMICO, "Pessoas na mesma casa", TipoEntrada.NUMERO)
+                    .noRelato("quantas pessoas moram na mesma casa, contando a própria pessoa (número inteiro)")
                     .perguntar(
                             "Contando com você, quantas pessoas vivem na mesma casa ou no mesmo núcleo familiar?",
                             "Contando com a pessoa, quantos vivem na mesma casa ou no mesmo núcleo familiar?")
                     .validar(Validadores::pessoasNoNucleo, 2)
                     .alternativas(NAO_SEI),
             Pergunta.de(DEPENDENTES, SOCIOECONOMICO, "Dependentes", TipoEntrada.NUMERO)
+                    .noRelato("quantas dessas pessoas dependem financeiramente da pessoa (número inteiro)")
                     .perguntar(
                             "Quantas dessas pessoas dependem de você financeiramente?",
                             "Quantas dessas pessoas dependem financeiramente de quem será atendido?")
@@ -214,6 +232,7 @@ public class RoteiroCadastro {
                     .alternativas(NAO_SEI)
                     .quando(rascunho -> !rascunho.tem(QUANTIDADE_MEMBROS, "1")),
             Pergunta.de(SITUACAO_MORADIA, SOCIOECONOMICO, "Moradia", TipoEntrada.ESCOLHA)
+                    .noRelato("situação da moradia atual")
                     .perguntar("Como é a sua moradia hoje?", "Como é a moradia da pessoa hoje?")
                     .alternativas(RoteiroCadastro::moradias));
     }
@@ -224,6 +243,11 @@ public class RoteiroCadastro {
 
     public Optional<Pergunta> de(Campo campo, RascunhoCadastro rascunho) {
         return aplicaveis(rascunho).filter(pergunta -> pergunta.campo() == campo).findFirst();
+    }
+
+    /** Todas as perguntas, na ordem do roteiro, estejam ou não aplicáveis ao rascunho atual. */
+    public Stream<Pergunta> todas() {
+        return perguntas.stream();
     }
 
     public Stream<Pergunta> aplicaveis(RascunhoCadastro rascunho) {

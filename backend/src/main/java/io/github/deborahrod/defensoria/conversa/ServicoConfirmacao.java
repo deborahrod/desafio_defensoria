@@ -138,7 +138,7 @@ public class ServicoConfirmacao {
         if (cpf != null && pessoas.existsByCpf(cpf)) {
             throw conflito();
         }
-        var campos = roteiro.aplicaveis(rascunho).map(pergunta -> pergunta.campo())
+        var campos = roteiro.aplicaveis(rascunho).filter(Pergunta::noResumo).map(pergunta -> pergunta.campo())
                 .filter(campo -> !CAMPOS_SOCIOECONOMICOS.contains(campo))
                 .toList();
         var pessoa = new PessoaCadastro(

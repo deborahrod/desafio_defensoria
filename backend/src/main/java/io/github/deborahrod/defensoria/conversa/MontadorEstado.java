@@ -37,7 +37,7 @@ public class MontadorEstado {
     public EstadoConversa montar(SessaoCadastro sessao, RascunhoCadastro rascunho, List<String> avisos) {
         var proxima = roteiro.proxima(rascunho);
         var pergunta = rascunho.esclarecimento()
-                .map(this::perguntarSobre)
+                .map(pendente -> perguntarSobre(pendente, rascunho))
                 .or(() -> proxima.map(seguinte -> apresentar(seguinte, rascunho)))
                 .orElse(null);
         return new EstadoConversa(
@@ -106,12 +106,13 @@ public class MontadorEstado {
                 pergunta.ajuda(),
                 pergunta.tipoEntrada(),
                 pergunta.opcoes(rascunho),
-                pergunta.tamanhoMaximo());
+                pergunta.tamanhoMaximo(),
+                List.of());
     }
 
-    private ProximaPergunta perguntarSobre(Esclarecimento pendente) {
+    private ProximaPergunta perguntarSobre(Esclarecimento pendente, RascunhoCadastro rascunho) {
         if (pendente.tipo() == Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO) {
-            return confirmarInterpretacao(pendente);
+            return confirmarInterpretacao(pendente, rascunho);
         }
         var alterado = Stream.concat(pendente.valores().keySet().stream(), pendente.ausencias().keySet().stream())
                 .findFirst()
@@ -127,20 +128,29 @@ public class MontadorEstado {
                 null,
                 TipoEntrada.ESCOLHA,
                 List.of(new Opcao(CONFIRMAR, "Sim, alterar"), new Opcao(MANTER, "Não, manter como está")),
-                null);
+                null,
+                List.of());
     }
 
-    private ProximaPergunta confirmarInterpretacao(Esclarecimento pendente) {
-        var entendido = pendente.valores().entrySet().stream()
-                .map(e -> roteiro.rotulo(Campo.deId(e.getKey()).orElseThrow()) + ": " + e.getValue())
-                .collect(Collectors.joining("; "));
+    private ProximaPergunta confirmarInterpretacao(Esclarecimento pendente, RascunhoCadastro rascunho) {
+        // O marcador do relato é só controle interno: o que a pessoa confere são os dados entendidos.
+        var itens = pendente.valores().entrySet().stream()
+                .filter(e -> !e.getKey().equals(Campo.RELATO.id()))
+                .map(e -> {
+                    var campo = Campo.deId(e.getKey()).orElseThrow();
+                    var pergunta = roteiro.todas().filter(p -> p.campo() == campo).findFirst().orElseThrow();
+                    return new EstadoConversa.ItemConfirmacao(pergunta.rotulo(), pergunta.exibir(e.getValue(), rascunho));
+                })
+                .toList();
+        var entendido = itens.stream().map(i -> i.rotulo() + ": " + i.valor()).collect(Collectors.joining("; "));
         return new ProximaPergunta(
-                pendente.valores().keySet().iterator().next(),
+                Campo.deId(pendente.valores().keySet().iterator().next()).orElseThrow().id(),
                 "Entendi assim: " + entendido + ". Está certo?",
                 null,
                 TipoEntrada.ESCOLHA,
                 List.of(new Opcao(CONFIRMAR, "Sim, está certo"), new Opcao(MANTER, "Não, vou responder de novo")),
-                null);
+                null,
+                itens);
     }
 
     private Progresso progresso(RascunhoCadastro rascunho, Optional<Pergunta> proxima) {

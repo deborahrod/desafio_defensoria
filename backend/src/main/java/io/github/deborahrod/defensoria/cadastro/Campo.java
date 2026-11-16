@@ -19,6 +19,7 @@ public enum Campo {
     REFERENCIA_VINCULO("referenciaVinculo"),
     REFERENCIA_CANAL("referenciaCanal"),
     AVISO_IA("avisoIa"),
+    RELATO("relato"),
     MUNICIPIO("municipio"),
     UF("uf"),
     ENDERECO_FIXO("enderecoFixo"),

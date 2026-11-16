@@ -4,24 +4,28 @@ import io.github.deborahrod.defensoria.cadastro.Campo;
 import io.github.deborahrod.defensoria.cadastro.ConfirmacaoCadastroRepository;
 import io.github.deborahrod.defensoria.cadastro.Esclarecimento;
 import io.github.deborahrod.defensoria.cadastro.EstadoSessao;
+import io.github.deborahrod.defensoria.cadastro.ModoInteracao;
 import io.github.deborahrod.defensoria.cadastro.MotivoAusencia;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastro;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastroRepository;
 import io.github.deborahrod.defensoria.cadastro.SessaoCadastro;
 import io.github.deborahrod.defensoria.cadastro.SessaoCadastroRepository;
-import io.github.deborahrod.defensoria.cadastro.ModoInteracao;
 import io.github.deborahrod.defensoria.cadastro.SessaoInexistenteException;
+import io.github.deborahrod.defensoria.integracao.FalhaInterpretacaoException.Categoria;
 import io.github.deborahrod.defensoria.integracao.Interpretacao;
+import io.github.deborahrod.defensoria.integracao.NormalizacaoDeTexto;
 import io.github.deborahrod.defensoria.integracao.PedidoInterpretacao;
+import io.github.deborahrod.defensoria.integracao.PedidoInterpretacao.CampoPermitido;
 import io.github.deborahrod.defensoria.integracao.PropriedadesLlm;
+import io.github.deborahrod.defensoria.integracao.ResultadoInterpretacao;
 import io.github.deborahrod.defensoria.integracao.ResultadoInterpretacao.Operacao;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +37,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServicoConversa {
 
     static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
+
+    /** Marca que o relato foi enviado. O texto em si nunca é guardado. */
+    static final String RELATO_ENVIADO = "ENVIADO";
+
+    private static final int LIMITE_RELATO = 400;
 
     private static final String SAUDACAO =
             "Vou fazer algumas perguntas, uma de cada vez. Você poderá corrigir qualquer resposta "
@@ -50,6 +59,7 @@ public class ServicoConversa {
     private final ConfirmacaoCadastroRepository confirmacoes;
     private final RoteiroCadastro roteiro;
     private final MontadorEstado montador;
+    private final AjudaCatalogo ajuda;
     private final PropriedadesLlm llm;
     private final Clock relogio;
 
@@ -60,6 +70,7 @@ public class ServicoConversa {
             ConfirmacaoCadastroRepository confirmacoes,
             RoteiroCadastro roteiro,
             MontadorEstado montador,
+            AjudaCatalogo ajuda,
             PropriedadesLlm llm,
             Clock relogio) {
         this.sessoes = sessoes;
@@ -68,6 +79,7 @@ public class ServicoConversa {
         this.confirmacoes = confirmacoes;
         this.roteiro = roteiro;
         this.montador = montador;
+        this.ajuda = ajuda;
         this.llm = llm;
         this.relogio = relogio;
     }
@@ -93,8 +105,9 @@ public class ServicoConversa {
     }
 
     /**
-     * Decide se esta resposta vai à IA: só texto livre elegível, com a assistência escolhida, sem dados pessoais.
-     * Quando vai, devolve o mínimo necessário; o chamador faz a chamada fora de transação.
+     * Decide se esta resposta vai à IA e, se for, devolve o mínimo necessário. O chamador faz a chamada
+     * fora de transação. Vai à IA: o relato, o texto livre de município e ocupação e, em qualquer outra
+     * pergunta, uma dúvida que a validação do campo recusou. Nunca vai texto com dado pessoal.
      */
     @Transactional(readOnly = true)
     public Optional<PedidoInterpretacao> prepararInterpretacao(
@@ -109,23 +122,47 @@ public class ServicoConversa {
             return Optional.empty();
         }
         var rascunho = rascunho(sessaoId);
-        var pergunta = roteiro.proxima(rascunho).filter(Pergunta::interpretavelPorIa);
-        if (versao != rascunho.getVersao() || pergunta.isEmpty()) {
+        var proxima = roteiro.proxima(rascunho);
+        if (versao != rascunho.getVersao() || proxima.isEmpty()) {
             return Optional.empty();
         }
+        var pergunta = proxima.get();
         var texto = entrada.valor().strip();
+        var relato = pergunta.campo() == Campo.RELATO;
+        var extracao = relato || pergunta.interpretavelPorIa();
+
+        if (!extracao && !pareceDuvidaRecusada(pergunta, rascunho, entrada, texto)) {
+            return Optional.empty();
+        }
         if (ContemDadosPessoais.em(texto)) {
-            throw new RespostaInvalidaException(pergunta.get().campo(),
+            if (!extracao) {
+                return Optional.empty();
+            }
+            throw new RespostaInvalidaException(pergunta.campo(),
                     "Não escreva CPF, telefone ou e-mail nesta resposta: esses dados são pedidos em campos próprios. "
                             + "Responda só à pergunta.");
         }
-        var campos = roteiro.aplicaveis(rascunho)
-                .filter(Pergunta::interpretavelPorIa)
-                .filter(p -> !rascunho.respondido(p.campo()))
-                .map(p -> new PedidoInterpretacao.CampoPermitido(p.campo().id(), p.descricaoIa()))
-                .toList();
+        if (relato) {
+            if (texto.length() > LIMITE_RELATO) {
+                throw new RespostaInvalidaException(pergunta.campo(), "O relato pode ter até 400 caracteres.");
+            }
+            if (ConteudoSensivel.em(texto)) {
+                throw new RespostaInvalidaException(pergunta.campo(),
+                        "Para sua segurança, não conte detalhes do seu caso aqui. Escreva só onde mora, o que faz "
+                                + "e quem mora com você, ou responda pergunta por pergunta.");
+            }
+        }
+
+        var campos = extracao
+                ? camposDoTurno(rascunho, pergunta).stream()
+                        .map(p -> new CampoPermitido(
+                                p.campo().id(),
+                                p.descricaoIa(),
+                                p.escolhaFechada() ? p.idsDeOpcoes(rascunho) : List.of()))
+                        .toList()
+                : List.<CampoPermitido>of();
         return Optional.of(new PedidoInterpretacao(
-                pergunta.get().texto(RoteiroCadastro.paraOutraPessoa(rascunho)), texto, campos));
+                pergunta.texto(RoteiroCadastro.paraOutraPessoa(rascunho)), texto, campos, ajuda.topicos()));
     }
 
     @Transactional
@@ -209,8 +246,16 @@ public class ServicoConversa {
             Instant agora) {
         var pergunta = roteiro.proxima(rascunho)
                 .orElseThrow(() -> new EstadoInvalidoException("Não há pergunta aguardando resposta."));
-        if (interpretacao.isPresent() && pergunta.interpretavelPorIa() && entrada.valor() != null) {
-            return aplicarInterpretacao(sessao, rascunho, pergunta, interpretacao.get(), agora);
+        var relato = pergunta.campo() == Campo.RELATO;
+        if (interpretacao.isPresent() && entrada.valor() != null) {
+            return relato || pergunta.interpretavelPorIa()
+                    ? aplicarInterpretacao(sessao, rascunho, pergunta, entrada.valor().strip(), interpretacao.get(), agora)
+                    : aplicarAjuda(sessao, rascunho, pergunta, entrada, interpretacao.get(), agora);
+        }
+        if (relato && entrada.valor() != null) {
+            // O texto do relato só é aceito depois de interpretado: nunca vira valor do rascunho.
+            throw new RespostaInvalidaException(pergunta.campo(),
+                    "Não consegui interpretar o relato agora. Responda pergunta por pergunta.");
         }
         var resolucao = pergunta.resolver(entrada, contexto(rascunho, agora));
         if (resolucao instanceof Resolucao.Invalida invalida) {
@@ -220,6 +265,8 @@ public class ServicoConversa {
         if (pergunta.campo() == Campo.AVISO_IA && rascunho.tem(Campo.AVISO_IA, RoteiroCadastro.USAR_IA)) {
             sessao.usarModo(ModoInteracao.ASSISTIDO_POR_IA);
         }
+        // Valores trazidos pelo relato podem deixar de valer com a resposta nova (moradia e endereço fixo).
+        removerInvalidados(rascunho, agora);
         return List.of();
     }
 
@@ -228,44 +275,140 @@ public class ServicoConversa {
      * qualquer dúvida volta para a pessoa. Falha da IA muda o modo de coleta e preserva o rascunho.
      */
     private List<String> aplicarInterpretacao(
-            SessaoCadastro sessao, RascunhoCadastro rascunho, Pergunta pergunta, Interpretacao interpretacao, Instant agora) {
+            SessaoCadastro sessao,
+            RascunhoCadastro rascunho,
+            Pergunta pergunta,
+            String texto,
+            Interpretacao interpretacao,
+            Instant agora) {
         if (interpretacao instanceof Interpretacao.Falha) {
-            sessao.usarModo(ModoInteracao.ESTRUTURADO);
-            return List.of(IA_INDISPONIVEL);
+            return falhaDaIa(sessao, rascunho, pergunta, agora);
         }
         var resultado = ((Interpretacao.Sucesso) interpretacao).resultado();
-        var enunciado = pergunta.texto(RoteiroCadastro.paraOutraPessoa(rascunho));
         if (resultado.operacao() == Operacao.FORA_DE_ESCOPO) {
             throw new RespostaInvalidaException(pergunta.campo(),
-                    "Posso ajudar apenas com o preenchimento deste cadastro. " + enunciado);
+                    "Posso ajudar apenas com o preenchimento deste cadastro. "
+                            + pergunta.texto(RoteiroCadastro.paraOutraPessoa(rascunho)));
+        }
+        if (resultado.operacao() == Operacao.AJUDA) {
+            return List.of(verbeteOuErro(resultado, pergunta, rascunho));
         }
 
-        var contexto = contexto(rascunho, agora);
-        var aceitos = new LinkedHashMap<String, String>();
-        for (var candidato : resultado.candidatos()) {
-            var alvo = Campo.deId(candidato.campo())
-                    .filter(campo -> !rascunho.respondido(campo))
-                    .flatMap(campo -> roteiro.aplicaveis(rascunho)
-                            .filter(p -> p.campo() == campo && p.interpretavelPorIa())
-                            .findFirst());
-            alvo.ifPresent(p -> {
-                if (p.resolver(RespostaEntrada.valor(candidato.valor()), contexto) instanceof Resolucao.Valor valor) {
-                    aceitos.putIfAbsent(p.campo().id(), valor.valor());
-                }
-            });
-        }
-
+        var aceitos = resolverCandidatos(rascunho, pergunta, resultado, agora);
         if (resultado.operacao() != Operacao.PROPOR_VALORES || resultado.precisaEsclarecimento() || aceitos.isEmpty()) {
-            throw new RespostaInvalidaException(pergunta.campo(),
-                    "Não consegui entender essa resposta com segurança. Responda de forma direta: " + enunciado);
+            throw naoEntendi(pergunta, rascunho);
         }
-        if (aceitos.size() == 1 && aceitos.containsKey(pergunta.campo().id())) {
-            rascunho.informar(pergunta.campo(), aceitos.get(pergunta.campo().id()), agora);
-        } else {
-            rascunho.pedirEsclarecimento(
-                    new Esclarecimento(Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO, aceitos, Map.of(), List.of()), agora);
+        var relato = pergunta.campo() == Campo.RELATO;
+        var campoAtual = pergunta.campo().id();
+        // Só se aplica direto o que a pessoa digitou de fato: qualquer ajuste do modelo pede confirmação.
+        if (!relato && aceitos.size() == 1 && aceitos.containsKey(campoAtual)
+                && NormalizacaoDeTexto.normalizar(aceitos.get(campoAtual)).equals(NormalizacaoDeTexto.normalizar(texto))) {
+            rascunho.informar(pergunta.campo(), aceitos.get(campoAtual), agora);
+            return List.of();
         }
+        var valores = new LinkedHashMap<>(aceitos);
+        if (relato) {
+            valores.put(Campo.RELATO.id(), RELATO_ENVIADO);
+        }
+        rascunho.pedirEsclarecimento(
+                new Esclarecimento(Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO, valores, Map.of(), List.of()), agora);
         return List.of();
+    }
+
+    /** Dúvida em pergunta sem extração: só o verbete do catálogo responde. Qualquer outra coisa volta como erro do campo. */
+    private List<String> aplicarAjuda(
+            SessaoCadastro sessao,
+            RascunhoCadastro rascunho,
+            Pergunta pergunta,
+            RespostaEntrada entrada,
+            Interpretacao interpretacao,
+            Instant agora) {
+        if (interpretacao instanceof Interpretacao.Falha falha) {
+            // Resposta fora do contrato é falha do modelo, não do provedor: mostra o erro do campo e segue.
+            if (falha.categoria() == Categoria.RESPOSTA_INVALIDA) {
+                throw erroDoCampo(pergunta, rascunho, entrada, agora);
+            }
+            return falhaDaIa(sessao, rascunho, pergunta, agora);
+        }
+        var resultado = ((Interpretacao.Sucesso) interpretacao).resultado();
+        var verbete = resultado.operacao() == Operacao.AJUDA ? ajuda.texto(resultado.topico()) : Optional.<String>empty();
+        if (verbete.isEmpty()) {
+            throw erroDoCampo(pergunta, rascunho, entrada, agora);
+        }
+        return List.of("Ajuda: " + verbete.get());
+    }
+
+    private List<String> falhaDaIa(SessaoCadastro sessao, RascunhoCadastro rascunho, Pergunta pergunta, Instant agora) {
+        sessao.usarModo(ModoInteracao.ESTRUTURADO);
+        if (pergunta.campo() == Campo.RELATO) {
+            rascunho.registrarAusencia(Campo.RELATO, MotivoAusencia.OPCIONAL_NAO_PREENCHIDO, agora);
+        }
+        return List.of(IA_INDISPONIVEL);
+    }
+
+    /** Valida os candidatos na ordem do roteiro, sobre uma cópia, para que um valide o seguinte. */
+    private Map<String, String> resolverCandidatos(
+            RascunhoCadastro rascunho, Pergunta atual, ResultadoInterpretacao resultado, Instant agora) {
+        var copia = rascunho.copia();
+        var aceitos = new LinkedHashMap<String, String>();
+        for (var pergunta : camposDoTurno(rascunho, atual)) {
+            var candidato = resultado.candidatos().stream()
+                    .filter(c -> c.campo().equals(pergunta.campo().id()))
+                    .findFirst();
+            if (candidato.isEmpty() || copia.respondido(pergunta.campo()) || !pergunta.aplicavel(copia)) {
+                continue;
+            }
+            var entrada = pergunta.escolhaFechada()
+                    ? RespostaEntrada.opcao(candidato.get().valor())
+                    : RespostaEntrada.valor(candidato.get().valor());
+            if (pergunta.resolver(entrada, contexto(copia, agora)) instanceof Resolucao.Valor valor) {
+                copia.informar(pergunta.campo(), valor.valor(), agora);
+                aceitos.put(pergunta.campo().id(), valor.valor());
+            }
+        }
+        return aceitos;
+    }
+
+    /** Perguntas que a IA pode preencher neste turno: as do relato, ou as de texto livre ainda abertas. */
+    private List<Pergunta> camposDoTurno(RascunhoCadastro rascunho, Pergunta atual) {
+        var relato = atual.campo() == Campo.RELATO;
+        return roteiro.todas()
+                .filter(p -> !rascunho.respondido(p.campo()))
+                .filter(p -> relato
+                        ? p.participaDoRelato()
+                        : (p.interpretavelPorIa() && p.aplicavel(rascunho))
+                                || p.sugeridaCom().filter(campo -> campo == atual.campo()).isPresent())
+                .toList();
+    }
+
+    /** Resposta que o campo recusou e que parece uma pergunta, não uma tentativa de resposta. */
+    private boolean pareceDuvidaRecusada(
+            Pergunta pergunta, RascunhoCadastro rascunho, RespostaEntrada entrada, String texto) {
+        var duvida = texto.contains("?") || texto.split("\\s+").length >= 2;
+        return duvida && pergunta.resolver(entrada, contexto(rascunho, relogio.instant())) instanceof Resolucao.Invalida;
+    }
+
+    private RespostaInvalidaException erroDoCampo(
+            Pergunta pergunta, RascunhoCadastro rascunho, RespostaEntrada entrada, Instant agora) {
+        var mensagem = pergunta.resolver(entrada, contexto(rascunho, agora)) instanceof Resolucao.Invalida invalida
+                ? invalida.mensagem()
+                : "Não consegui usar essa resposta. Responda de forma direta.";
+        return new RespostaInvalidaException(pergunta.campo(), mensagem);
+    }
+
+    private String verbeteOuErro(ResultadoInterpretacao resultado, Pergunta pergunta, RascunhoCadastro rascunho) {
+        return ajuda.texto(resultado.topico())
+                .map(texto -> "Ajuda: " + texto)
+                .orElseThrow(() -> naoEntendi(pergunta, rascunho));
+    }
+
+    private static RespostaInvalidaException naoEntendi(Pergunta pergunta, RascunhoCadastro rascunho) {
+        var enunciado = pergunta.texto(RoteiroCadastro.paraOutraPessoa(rascunho));
+        var mensagem = pergunta.campo() == Campo.RELATO
+                ? "Não consegui identificar dados nesse texto. Escreva onde mora, o que faz e quem mora com você, "
+                        + "ou escolha responder pergunta por pergunta."
+                : "Não consegui entender essa resposta com segurança. Responda de forma direta: " + enunciado;
+        return new RespostaInvalidaException(pergunta.campo(), mensagem);
     }
 
     private void responderEsclarecimento(RascunhoCadastro rascunho, RespostaEntrada entrada, Instant agora) {

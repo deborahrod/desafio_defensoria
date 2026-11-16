@@ -4,6 +4,7 @@ import io.github.deborahrod.defensoria.cadastro.Campo;
 import io.github.deborahrod.defensoria.cadastro.MotivoAusencia;
 import io.github.deborahrod.defensoria.cadastro.RascunhoCadastro;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -41,6 +42,9 @@ public final class Pergunta {
     private Integer tamanhoMaximo;
     private boolean opcional;
     private String descricaoIa;
+    private boolean textoInterpretavel;
+    private boolean noRelato;
+    private Campo sugeridaCom;
     private boolean noResumo = true;
     private Validador validador;
     private Predicate<RascunhoCadastro> aplicavel = rascunho -> true;
@@ -81,6 +85,20 @@ public final class Pergunta {
     /** Texto livre que a assistência por IA pode interpretar, com a descrição enviada ao modelo. */
     Pergunta interpretavelPorIa(String descricao) {
         this.descricaoIa = descricao;
+        this.textoInterpretavel = true;
+        return this;
+    }
+
+    /** O campo pode ser preenchido pelo relato livre, com a descrição enviada ao modelo. */
+    Pergunta noRelato(String descricao) {
+        this.descricaoIa = descricao;
+        this.noRelato = true;
+        return this;
+    }
+
+    /** Campo que o modelo também pode sugerir quando a pergunta atual é a do campo indicado. */
+    Pergunta sugeridaCom(Campo campo) {
+        this.sugeridaCom = campo;
         return this;
     }
 
@@ -192,7 +210,27 @@ public final class Pergunta {
     }
 
     public boolean interpretavelPorIa() {
-        return descricaoIa != null;
+        return textoInterpretavel;
+    }
+
+    public boolean participaDoRelato() {
+        return noRelato;
+    }
+
+    public Optional<Campo> sugeridaCom() {
+        return Optional.ofNullable(sugeridaCom);
+    }
+
+    /** Pergunta só de botões ou lista, sem texto livre: a IA só pode escolher um dos ids oferecidos. */
+    public boolean escolhaFechada() {
+        return validador == null;
+    }
+
+    public List<String> idsDeOpcoes(RascunhoCadastro rascunho) {
+        return alternativas.apply(rascunho).stream()
+                .filter(alternativa -> alternativa.valor() != null)
+                .map(Alternativa::id)
+                .toList();
     }
 
     public String descricaoIa() {

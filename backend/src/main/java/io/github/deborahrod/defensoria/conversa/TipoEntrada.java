@@ -4,6 +4,7 @@ public enum TipoEntrada {
     ESCOLHA,
     LISTA,
     TEXTO,
+    RELATO,
     DATA,
     CPF,
     TELEFONE,

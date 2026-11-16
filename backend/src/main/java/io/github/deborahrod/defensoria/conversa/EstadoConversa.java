@@ -25,7 +25,12 @@ public record EstadoConversa(
             String ajuda,
             TipoEntrada tipoEntrada,
             List<Opcao> opcoes,
-            Integer tamanhoMaximo) {
+            Integer tamanhoMaximo,
+            List<ItemConfirmacao> itens) {
+    }
+
+    /** Dado que a interpretação entendeu e que a pessoa precisa confirmar, já formatado para exibir. */
+    public record ItemConfirmacao(String rotulo, String valor) {
     }
 
     /** Posição entre as seções do cadastro. Não é percentual: o caminho muda conforme as respostas. */
