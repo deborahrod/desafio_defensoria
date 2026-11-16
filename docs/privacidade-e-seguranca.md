@@ -38,6 +38,7 @@ Nome, CPF, nascimento, telefone, e-mail, endereço detalhado e histórico da con
 | CSRF | Token em cookie `XSRF-TOKEN` (`SameSite=Strict`) e cabeçalho `X-XSRF-TOKEN` obrigatório nas mutações. Sem ele, `403` |
 | CORS | Só a mesma origem por padrão. Origens extras apenas via `CORS_ORIGENS`. Métodos `GET`, `POST`, `PATCH`, `DELETE` e cabeçalhos `Content-Type` e `X-XSRF-TOKEN` |
 | Sem cache | Respostas com `Cache-Control` `no-store` |
+| Cabeçalhos do frontend | O nginx envia, em todas as respostas, `Content-Security-Policy` (só a própria origem, sem script inline nem `eval`, sem enquadramento e sem `object`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy` e `Cross-Origin-Opener-Policy`, e não anuncia a versão. `style-src` aceita `'unsafe-inline'` porque o Material UI injeta estilos. `Strict-Transport-Security` não é enviado, porque o nginx do Compose fala HTTP: acrescente-o onde o TLS termina |
 | Sem autenticação própria | Sem formulário de login, HTTP Basic nem logout do Spring Security. A autorização é a sessão |
 | Texto seguro | O React escapa o texto. Mensagens digitadas aparecem como texto, nunca como HTML |
 | Erros | Corpo `{codigo, mensagem}` sem pilha, sem mensagem interna e sem prompt |
@@ -54,6 +55,8 @@ Também limitam custo e abuso: saída da IA limitada (350 tokens), timeout de 15
 - A chave de IA fica só no processo da API, em variável de ambiente. O `.env` está no `.gitignore` e o `.env.example` traz a variável **vazia**.
 - Não existe variável `VITE_` com segredo, e a chave não aparece no pacote do frontend, nas respostas, nos logs nem em `toString` (testes: `SegredoForaDoNavegadorTest`, `PropriedadesLlmTest`, `LogsSemDadosPessoaisTest`).
 - A senha padrão do banco no Compose serve só ao banco local de demonstração. Defina `DB_PASSWORD` fora disso.
+- **Perfil de produção.** Com `SPRING_PROFILES_ACTIVE=prod`, a API **se recusa a subir** se `SESSAO_COOKIE_SEGURO` não for `true` ou se `DB_PASSWORD` estiver vazia ou for a padrão de demonstração (`VerificacaoDeProducao`). A mensagem nomeia a variável, nunca o valor. Sem o perfil, os padrões de demonstração continuam valendo, o que permite rodar localmente em HTTP.
+- As imagens base dos Dockerfiles e do Compose são fixadas por digest (com a tag à vista) para o build ser reproduzível. Para atualizar, troque a tag e o digest juntos.
 - As portas do Compose são publicadas apenas em `127.0.0.1`.
 
 ## Logs
@@ -71,5 +74,5 @@ Toda entrada é validada no servidor, mesmo quando o frontend também valida. Os
 - **Retenção e política de dados** de cadastros gravados dependem de definição institucional, e a base legal do tratamento não foi avaliada.
 - **Provedores externos** (IA e CEP) não tiveram contrato, retenção, localização do processamento nem transferência internacional avaliados.
 - **Limites em memória**: valem por instância. Com várias instâncias seria preciso estado compartilhado.
-- **Sem criptografia em repouso** configurada no banco do Compose, e a API fala HTTP atrás do nginx local. Em produção seria preciso HTTPS (`SESSAO_COOKIE_SEGURO=true`) e a proteção do banco do ambiente.
+- **Sem criptografia em repouso** configurada no banco do Compose, e o nginx do Compose fala HTTP. Em produção seria preciso terminar o TLS na frente (com `Strict-Transport-Security`), ativar o perfil `prod` e proteger o banco do ambiente.
 - Revisar, confirmar, tomar ciência de aviso e assinar são ações diferentes. O botão **Confirmar cadastro** não é assinatura nem declaração oficial de hipossuficiência.

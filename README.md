@@ -82,6 +82,7 @@ Copie `.env.example` para `.env`. O `.env` está no `.gitignore` e **nunca** dev
 | `LLM_BASE_URL`, `LLM_MODEL` | Mistral | Qualquer API compatível com Chat Completions |
 | `LLM_TIMEOUT_SECONDS`, `LLM_MAX_OUTPUT_TOKENS` | 15, 350 | Limites da chamada de IA |
 | `CEP_TIMEOUT_MS` | 3000 | Limite da consulta de CEP |
+| `SPRING_PROFILES_ACTIVE` | (vazio) | `prod` faz a API recusar-se a subir sem `SESSAO_COOKIE_SEGURO=true` e `DB_PASSWORD` próprios |
 
 ## Testes
 

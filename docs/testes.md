@@ -9,7 +9,7 @@ cd frontend && npm run lint && npm test && npm run build
 
 No PowerShell, use `.\mvnw.cmd` no lugar de `./mvnw`.
 
-Resultado da última execução completa: **backend com 396 testes, 4 ignorados** (os que dependem de chave real), e **frontend com 93 testes**, todos passando.
+Resultado da última execução completa: **backend com 411 testes, 4 ignorados** (os que dependem de chave real), e **frontend com 98 testes**, todos passando.
 
 ## Estratégia
 
@@ -46,7 +46,7 @@ Os dados dos testes são inventados.
 | `EstadoSessaoTest` | 6 | Transições de estado |
 | `IsolamentoEntreSessoesTest` | 4 | Sessão A não acessa sessão B |
 | `ContatoApiTest` | 3 | Telefone inválido, CPF recusado no servidor, "Não tenho telefone" |
-| Outras | 23 | Chave de origem, limite por origem, catálogo de ajuda, operação única por sessão, falha na transação, logs sem dados pessoais, segredo fora do navegador, propriedades da IA, inicialização do aplicativo e `InterpretadorRealTest` (4, ignorados sem chave) |
+| Outras | 38 | Chave de origem (inclusive cadeia forjada), tamanho do mapa de origens, verificação do perfil de produção, limite por origem, catálogo de ajuda, operação única por sessão, falha na transação, logs sem dados pessoais, segredo fora do navegador, propriedades da IA, inicialização do aplicativo e `InterpretadorRealTest` (4, ignorados sem chave) |
 
 ### Cenários que merecem destaque
 
@@ -69,6 +69,7 @@ Os dados dos testes são inventados.
 | `PaginaInicial.test.tsx` | Apresentação e aviso de protótipo |
 | `Acessibilidade.test.tsx` | axe nas telas e jornada completa só com teclado |
 | `Tema.test.ts` | Marca e cores do portal, sem cor solta nos estilos |
+| `Nginx.test.ts` | Cabeçalhos de segurança, CSP sem script inline nem `eval`, e `X-Forwarded-For` definido pela conexão |
 | `App.test.tsx` | Montagem do aplicativo |
 
 O axe roda sem a regra de contraste, porque o jsdom não calcula estilos. O contraste das cores do tema foi calculado e todo texto passa de 4,5:1.

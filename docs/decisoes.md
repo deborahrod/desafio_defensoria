@@ -81,7 +81,23 @@ Registro curto das escolhas que mais moldaram o projeto. Cada uma diz o contexto
 - **Decisão.** Os limites por sessão, por minuto e por origem vivem na memória da instância.
 - **Consequência.** Simples e suficiente para uma instância. Com várias, seria preciso estado compartilhado. Os números são hipóteses iniciais, não capacidade medida.
 
-## D16. A conversa não é persistida no navegador
+## D16. O proxy define o endereço de origem
+
+- **Contexto.** O limite por origem usava a primeira entrada de `X-Forwarded-For`, e o nginx anexava o que o cliente mandasse, então um cabeçalho forjado dava um balde novo a cada requisição.
+- **Decisão.** O nginx **substitui** o cabeçalho pelo endereço da conexão e a API usa a última entrada da cadeia. O mapa de origens acompanhadas tem tamanho máximo.
+- **Consequência.** Não dá mais para escapar do teto forjando o cabeçalho. Atrás de outro proxy ou balanceador, é preciso configurá-lo para repassar o endereço do cliente.
+
+## D17. Perfil de produção que falha cedo
+
+- **Decisão.** Com `SPRING_PROFILES_ACTIVE=prod` a API não sobe com cookie sem `Secure` nem com a senha de banco padrão.
+- **Consequência.** Esquecer uma configuração de segurança vira erro na subida, não um risco silencioso. Os padrões de demonstração continuam servindo ao uso local.
+
+## D18. Política de conteúdo restritiva no frontend
+
+- **Decisão.** O nginx envia uma CSP que só aceita a própria origem, sem script inline nem `eval`. As fontes Roboto são empacotadas e o único afrouxamento é `'unsafe-inline'` em estilos, porque o Material UI injeta `<style>`.
+- **Consequência.** Reduz o impacto de uma injeção de HTML. Trocar o Material UI por CSS próprio, ou usar nonce, permitiria remover o afrouxamento.
+
+## D19. A conversa não é persistida no navegador
 
 - **Decisão.** O estado vive só em memória, sem `localStorage`.
 - **Consequência.** Menos dado pessoal no dispositivo. Recarregar a página perde a conversa e **Começar** abre uma nova sessão.
