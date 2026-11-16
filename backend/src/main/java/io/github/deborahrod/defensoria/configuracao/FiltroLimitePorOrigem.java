@@ -55,8 +55,13 @@ class FiltroLimitePorOrigem extends OncePerRequestFilter {
     static String chaveDeOrigem(HttpServletRequest requisicao, boolean confiarEmProxy) {
         var encaminhado = requisicao.getHeader("X-Forwarded-For");
         if (confiarEmProxy && encaminhado != null && !encaminhado.isBlank()) {
-            var primeiro = encaminhado.split(",")[0].strip();
-            return primeiro.substring(0, Math.min(primeiro.length(), 64));
+            // A última entrada é a que o proxy confiável acrescentou. As anteriores vieram do cliente e
+            // podem ser forjadas, então não servem de chave.
+            var entradas = encaminhado.split(",");
+            var ultimo = entradas.length == 0 ? "" : entradas[entradas.length - 1].strip();
+            if (!ultimo.isEmpty()) {
+                return ultimo.substring(0, Math.min(ultimo.length(), 64));
+            }
         }
         return requisicao.getRemoteAddr();
     }

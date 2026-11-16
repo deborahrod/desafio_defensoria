@@ -22,9 +22,24 @@ class ChaveDeOrigemTest {
     }
 
     @Test
-    void comProxyConfiavelVaiOPrimeiroEnderecoDaCadeia() {
-        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao("203.0.113.7, 198.51.100.2"), true))
+    void comProxyConfiavelVaiOUltimoEnderecoDaCadeia() {
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao("203.0.113.7"), true)).isEqualTo("203.0.113.7");
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao("198.51.100.2, 203.0.113.7"), true))
                 .isEqualTo("203.0.113.7");
+    }
+
+    @Test
+    void entradasAnterioresDaCadeiaVieramDoClienteENaoMudamAChave() {
+        var real = FiltroLimitePorOrigem.chaveDeOrigem(requisicao("1.1.1.1, 203.0.113.7"), true);
+
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao("2.2.2.2, 203.0.113.7"), true)).isEqualTo(real);
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao("9.9.9.9, 8.8.8.8, 203.0.113.7"), true)).isEqualTo(real);
+    }
+
+    @Test
+    void cadeiaSemEnderecoUtilCaiNoEnderecoDaConexao() {
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao(" , "), true)).isEqualTo("192.0.2.10");
+        assertThat(FiltroLimitePorOrigem.chaveDeOrigem(requisicao(",,"), true)).isEqualTo("192.0.2.10");
     }
 
     @Test
