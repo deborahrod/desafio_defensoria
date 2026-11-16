@@ -9,7 +9,7 @@ cd frontend && npm run lint && npm test && npm run build
 
 No PowerShell, use `.\mvnw.cmd` no lugar de `./mvnw`.
 
-Resultado da última execução completa: **backend com 411 testes, 4 ignorados** (os que dependem de chave real), e **frontend com 98 testes**, todos passando.
+Resultado da última execução completa: **backend com 413 testes, 4 ignorados** (os que dependem de chave real), e **frontend com 103 testes**, todos passando.
 
 ## Estratégia
 
@@ -46,7 +46,7 @@ Os dados dos testes são inventados.
 | `EstadoSessaoTest` | 6 | Transições de estado |
 | `IsolamentoEntreSessoesTest` | 4 | Sessão A não acessa sessão B |
 | `ContatoApiTest` | 3 | Telefone inválido, CPF recusado no servidor, "Não tenho telefone" |
-| Outras | 38 | Chave de origem (inclusive cadeia forjada), tamanho do mapa de origens, verificação do perfil de produção, limite por origem, catálogo de ajuda, operação única por sessão, falha na transação, logs sem dados pessoais, segredo fora do navegador, propriedades da IA, inicialização do aplicativo e `InterpretadorRealTest` (4, ignorados sem chave) |
+| Outras | 40 | Vetores compartilhados de CPF e telefone, chave de origem (inclusive cadeia forjada), tamanho do mapa de origens, verificação do perfil de produção, limite por origem, catálogo de ajuda, operação única por sessão, falha na transação, logs sem dados pessoais, segredo fora do navegador, propriedades da IA, inicialização do aplicativo e `InterpretadorRealTest` (4, ignorados sem chave) |
 
 ### Cenários que merecem destaque
 
@@ -59,8 +59,9 @@ Os dados dos testes são inventados.
 
 | Arquivo | O que cobre |
 |---|---|
-| `validacao.test.ts` | Máscara e validação de CPF e telefone, com os mesmos casos e mensagens do servidor |
-| `EntradaConversa.test.tsx` | Máscara ao digitar, apagar atravessando símbolos, erro acessível e que some ao corrigir, ausência sem validar |
+| `validacao.test.ts` | Máscara e validação de CPF e telefone, e a data de hoje no fuso de Brasília |
+| `vetores.test.ts` | Os casos de `testes-compartilhados/validacao.json`, os mesmos lidos pelo backend (`VetoresCompartilhadosTest`): interface e servidor aceitam e recusam o mesmo texto e a mensagem contém o mesmo trecho |
+| `EntradaConversa.test.tsx` | Máscara ao digitar, apagar atravessando símbolos, erro acessível e que some ao corrigir, ausência sem validar e limite da data de nascimento que acompanha a virada do dia |
 | `ChatCadastro.test.tsx` | Envio único, duplo clique, texto exibido como texto, sessão expirada, modo de IA |
 | `RelatoEConfirmacao.test.tsx` | Relato, lista "Entendi assim" e ajuda |
 | `PainelRespostas.test.tsx` | Painel durante o preenchimento, edição, bloqueio com escolha pendente |

@@ -64,7 +64,7 @@ Registro curto das escolhas que mais moldaram o projeto. Cada uma diz o contexto
 ## D12. Validação de CPF e telefone nos dois lados
 
 - **Decisão.** O frontend aplica máscara e as mesmas regras e mensagens para resposta imediata. O servidor continua a fonte de verdade.
-- **Consequência.** Há duas implementações da regra, mantidas alinhadas por testes com os mesmos casos. Um cliente que pule a interface continua sendo barrado.
+- **Consequência.** Há duas implementações da regra, mantidas alinhadas por um arquivo único de casos (`testes-compartilhados/validacao.json`) que os testes dos dois lados leem: se divergirem, um deles falha. Um cliente que pule a interface continua sendo barrado.
 
 ## D13. Material UI só onde ajuda
 
