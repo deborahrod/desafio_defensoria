@@ -45,7 +45,7 @@ Nome, CPF, nascimento, telefone, e-mail, endereço detalhado e histórico da con
 
 ## Limites de uso
 
-Aplicados no backend: 60 respostas por sessão, 10 por minuto por sessão, 120 requisições por minuto por origem e uma resposta em andamento por sessão. Em excesso, `429`, com `Retry-After` quando há espera. O limite por origem só olha `X-Forwarded-For` quando `LIMITES_CONFIAR_EM_PROXY=true`, o que o Compose ativa por estar atrás do nginx. Exponha a API diretamente apenas com essa opção desligada.
+Aplicados no backend: 60 respostas por sessão, 10 por minuto por sessão, 120 requisições por minuto por origem e uma resposta em andamento por sessão. Em excesso, `429`, com `Retry-After` quando há espera. O limite por origem só olha `X-Forwarded-For` quando `LIMITES_CONFIAR_EM_PROXY=true`, o que o Compose ativa por estar atrás do nginx. O nginx **substitui** o cabeçalho pelo endereço da conexão (`proxy_set_header X-Forwarded-For $remote_addr`), e a API usa a **última** entrada, a que o proxy confiável acrescentou: o que o cliente enviar antes não vira chave, então não dá para escapar do teto forjando o cabeçalho. O mapa de origens acompanhadas tem tamanho máximo de 10 mil, mais um balde compartilhado para as excedentes, para que chaves novas em sequência não consumam memória sem fim. Exponha a API diretamente apenas com `LIMITES_CONFIAR_EM_PROXY` desligado. Se houver outro proxy ou balanceador na frente do nginx, o endereço visto será o dele: ajuste a configuração para repassar o endereço do cliente de um proxy confiável.
 
 Também limitam custo e abuso: saída da IA limitada (350 tokens), timeout de 15 s na IA e 3 s no CEP, e um relato de no máximo 400 caracteres.
 

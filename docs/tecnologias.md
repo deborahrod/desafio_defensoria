@@ -41,7 +41,7 @@ A conversa existe só em memória no navegador. Não há `localStorage` nem `ses
 | `api` | `backend/Dockerfile` | 8081 |
 | `web` | `frontend/Dockerfile`, nginx servindo o build e encaminhando `/api/` para a API | 8080 |
 
-O nginx repassa `Host`, `X-Forwarded-For` e `X-Forwarded-Proto`. O Compose liga `LIMITES_CONFIAR_EM_PROXY` porque a API fica atrás dele.
+O nginx repassa `Host` e `X-Forwarded-Proto` e define `X-Forwarded-For` como o endereço da conexão, descartando o que o cliente enviar. O Compose liga `LIMITES_CONFIAR_EM_PROXY` porque a API fica atrás dele.
 
 ## Serviços externos (opcionais)
 
