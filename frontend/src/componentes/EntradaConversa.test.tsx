@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
-import { expect, test, vi } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import type { ProximaPergunta } from '../api/tipos.ts'
 import EntradaConversa from './EntradaConversa.tsx'
 
@@ -131,4 +131,30 @@ test('campo com erro de validação não tem violações de acessibilidade', asy
 
   const resultado = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })
   expect(resultado.violations).toEqual([])
+})
+
+const NASCIMENTO: ProximaPergunta = {
+  campo: 'nascimento',
+  texto: 'Qual é a sua data de nascimento?',
+  ajuda: null,
+  tipoEntrada: 'DATA',
+  opcoes: [],
+  tamanhoMaximo: 10,
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+test('o limite da data de nascimento é o dia de hoje, no fuso de Brasília, e acompanha a virada do dia', () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+
+  vi.setSystemTime(new Date('2026-03-11T02:30:00Z'))
+  const { unmount } = abrir(NASCIMENTO)
+  expect(screen.getByLabelText('Sua resposta')).toHaveAttribute('max', '2026-03-10')
+  unmount()
+
+  vi.setSystemTime(new Date('2026-03-11T03:30:00Z'))
+  abrir(NASCIMENTO)
+  expect(screen.getByLabelText('Sua resposta')).toHaveAttribute('max', '2026-03-11')
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mascararCpf, validarCpf } from './cpf.ts'
+import { dataDeHoje } from './data.ts'
 import { mascararTelefone, validarTelefone } from './telefone.ts'
 
 describe('CPF', () => {
@@ -75,5 +76,16 @@ describe('telefone', () => {
   it('recusa números com todos os dígitos iguais', () => {
     expect(validarTelefone('(62) 99999-9999')).toContain('todos os dígitos são iguais')
     expect(validarTelefone('(62) 3333-3333')).toContain('todos os dígitos são iguais')
+  })
+})
+
+describe('data de hoje', () => {
+  it('usa o fuso de Brasília: à noite, o dia ainda é o anterior ao do UTC', () => {
+    expect(dataDeHoje(new Date('2026-03-11T02:30:00Z'))).toBe('2026-03-10')
+    expect(dataDeHoje(new Date('2026-03-11T03:00:00Z'))).toBe('2026-03-11')
+  })
+
+  it('devolve aaaa-mm-dd com zeros à esquerda', () => {
+    expect(dataDeHoje(new Date('2026-01-05T15:00:00Z'))).toBe('2026-01-05')
   })
 })

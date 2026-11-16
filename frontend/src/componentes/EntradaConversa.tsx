@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import type { Entrada, ProximaPergunta, TipoEntrada } from '../api/tipos.ts'
 import { mascararCpf, validarCpf } from '../validacao/cpf.ts'
+import { dataDeHoje } from '../validacao/data.ts'
 import { mascararTelefone, validarTelefone } from '../validacao/telefone.ts'
 import estilos from './EntradaConversa.module.css'
 
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const ATRIBUTOS: Partial<Record<TipoEntrada, React.InputHTMLAttributes<HTMLInputElement>>> = {
-  DATA: { type: 'date', max: new Date().toISOString().slice(0, 10) },
+  DATA: { type: 'date' },
   CPF: { type: 'text', inputMode: 'numeric', autoComplete: 'off', maxLength: 14 },
   TELEFONE: { type: 'tel', inputMode: 'tel', autoComplete: 'tel', maxLength: 20 },
   EMAIL: { type: 'email', inputMode: 'email', autoComplete: 'email' },
@@ -158,6 +159,8 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
                 type="text"
                 maxLength={pergunta.tamanhoMaximo ?? undefined}
                 {...ATRIBUTOS[tipo]}
+                // Calculada a cada renderização: uma aba aberta de um dia para o outro não fica com o limite velho.
+                max={tipo === 'DATA' ? dataDeHoje() : undefined}
                 value={valor}
                 disabled={desabilitado}
                 aria-describedby={descritoPor}
