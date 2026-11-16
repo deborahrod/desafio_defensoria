@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import type { Entrada, ProximaPergunta, TipoEntrada } from '../api/tipos.ts'
+import { mascararCpf, validarCpf } from '../validacao/cpf.ts'
+import { mascararTelefone, validarTelefone } from '../validacao/telefone.ts'
 import estilos from './EntradaConversa.module.css'
 
 interface Props {
@@ -13,11 +15,21 @@ interface Props {
 const ATRIBUTOS: Partial<Record<TipoEntrada, React.InputHTMLAttributes<HTMLInputElement>>> = {
   DATA: { type: 'date', max: new Date().toISOString().slice(0, 10) },
   CPF: { type: 'text', inputMode: 'numeric', autoComplete: 'off', maxLength: 14 },
-  TELEFONE: { type: 'tel', inputMode: 'tel', autoComplete: 'tel' },
+  TELEFONE: { type: 'tel', inputMode: 'tel', autoComplete: 'tel', maxLength: 20 },
   EMAIL: { type: 'email', inputMode: 'email', autoComplete: 'email' },
   CEP: { type: 'text', inputMode: 'numeric', autoComplete: 'postal-code', maxLength: 9 },
   VALOR: { type: 'text', inputMode: 'decimal', autoComplete: 'off' },
   NUMERO: { type: 'text', inputMode: 'numeric', autoComplete: 'off', maxLength: 3 },
+}
+
+const MASCARAS: Partial<Record<TipoEntrada, (texto: string) => string>> = {
+  CPF: mascararCpf,
+  TELEFONE: mascararTelefone,
+}
+
+const VALIDACOES: Partial<Record<TipoEntrada, (texto: string) => string | null>> = {
+  CPF: validarCpf,
+  TELEFONE: validarTelefone,
 }
 
 function exibir(tipo: TipoEntrada, valor: string): string {
@@ -33,11 +45,13 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
   const idCampo = useId()
   const idAjuda = useId()
   const idContador = useId()
+  const idErro = useId()
+  const [erro, setErro] = useState<string | null>(null)
   const { tipoEntrada: tipo, opcoes } = pergunta
   const porBotoes = tipo === 'ESCOLHA'
   const porLista = tipo === 'LISTA'
   const relato = tipo === 'RELATO'
-  const descritoPor = [pergunta.ajuda ? idAjuda : '', relato ? idContador : ''].filter(Boolean).join(' ') || undefined
+  const descritoPor = [pergunta.ajuda ? idAjuda : '', relato ? idContador : '', erro ? idErro : ''].filter(Boolean).join(' ') || undefined
 
   useEffect(() => {
     raiz.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
@@ -45,10 +59,25 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
 
   const escolher = (id: string, rotulo: string) => aoEnviar({ opcao: id }, rotulo)
 
+  // Aplica a máscara do tipo. Se a pessoa apagou só um símbolo da máscara, apaga também o número anterior.
+  const digitar = (novo: string) => {
+    const mascarar = MASCARAS[tipo]
+    setErro(null)
+    if (!mascarar) return setValor(novo)
+    const apagou = novo.length < valor.length
+    const mascarado = mascarar(novo)
+    setValor(apagou && mascarado === valor ? mascarar(valor.replace(/\D/g, '').slice(0, -1)) : mascarado)
+  }
+
   const enviarValor = (evento: FormEvent) => {
     evento.preventDefault()
     const limpo = valor.trim()
     if (!limpo || desabilitado) return
+    const mensagem = VALIDACOES[tipo]?.(limpo)
+    if (mensagem) {
+      setErro(mensagem)
+      return
+    }
     if (porLista) {
       const escolhida = opcoes.find((o) => o.id === limpo)
       if (escolhida) escolher(escolhida.id, escolhida.rotulo)
@@ -132,13 +161,19 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
                 value={valor}
                 disabled={desabilitado}
                 aria-describedby={descritoPor}
-                onChange={(e) => setValor(e.target.value)}
+                aria-invalid={erro ? true : undefined}
+                onChange={(e) => digitar(e.target.value)}
               />
             )}
             <button type="submit" className={estilos.enviar} disabled={desabilitado || !valor.trim()}>
               Enviar
             </button>
           </div>
+          {erro && (
+            <p id={idErro} role="alert" className={estilos.erro}>
+              {erro}
+            </p>
+          )}
           {relato && (
             <p id={idContador} className={estilos.contador}>
               {valor.length} de {pergunta.tamanhoMaximo} caracteres. Ctrl+Enter envia.

@@ -92,7 +92,7 @@ test('edição recusada pelo servidor mostra o motivo e mantém o editor aberto'
   fetchSimulado.mockResolvedValueOnce(json({ codigo: 'RESPOSTA_INVALIDA', mensagem: 'Informe o telefone com DDD.', campo: 'telefone' }, 400))
 
   await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
-  await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '123{Enter}')
+  await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '62912345678{Enter}')
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Informe o telefone com DDD.')
   expect(screen.getByLabelText('Nova resposta: Telefone')).toBeInTheDocument()
