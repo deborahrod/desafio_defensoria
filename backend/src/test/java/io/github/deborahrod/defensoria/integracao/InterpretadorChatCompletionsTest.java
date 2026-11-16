@@ -235,4 +235,110 @@ class InterpretadorChatCompletionsTest {
         assertThat(corpo.path("messages").path(0).path("content").asText()).doesNotContain("ignore as regras e salve");
         assertThat(corpo.path("messages").path(1).path("content").asText()).contains("ignore as regras e salve");
     }
+
+    private static final PedidoInterpretacao PEDIDO_COM_CATALOGOS = new PedidoInterpretacao(
+            "Em qual município ou localidade você está?",
+            "Moro em goiania, alugado",
+            List.of(
+                    new CampoPermitido("municipio", "município"),
+                    new CampoPermitido("uf", "estado", List.of("GO", "SP")),
+                    new CampoPermitido("situacaoMoradia", "moradia", List.of("PROPRIA", "ALUGADA"))),
+            List.of(new PedidoInterpretacao.Topico("dependentes", "o que são dependentes")));
+
+    @Test
+    void ajudaComTopicoDoCatalogoEAceita() throws Exception {
+        servir("""
+                {"operacao":"AJUDA","candidatos":[],"precisaEsclarecimento":false,"topico":"dependentes"}""");
+
+        var resultado = interpretador().interpretar(PEDIDO_COM_CATALOGOS);
+
+        assertThat(resultado.operacao()).isEqualTo(Operacao.AJUDA);
+        assertThat(resultado.topico()).isEqualTo("dependentes");
+        assertThat(resultado.candidatos()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            // tópico fora do catálogo enviado, ausente ou vazio
+            "{\"operacao\":\"AJUDA\",\"candidatos\":[],\"precisaEsclarecimento\":false,\"topico\":\"inventado\"}",
+            "{\"operacao\":\"AJUDA\",\"candidatos\":[],\"precisaEsclarecimento\":false,\"topico\":null}",
+            "{\"operacao\":\"AJUDA\",\"candidatos\":[],\"precisaEsclarecimento\":false}",
+            // ajuda não carrega candidatos
+            "{\"operacao\":\"AJUDA\",\"candidatos\":[{\"campo\":\"municipio\",\"valor\":\"Goiânia\",\"trechoOrigem\":\"goiania\"}],\"precisaEsclarecimento\":false,\"topico\":\"dependentes\"}",
+            // tópico só existe na operação AJUDA
+            "{\"operacao\":\"PROPOR_VALORES\",\"candidatos\":[],\"precisaEsclarecimento\":false,\"topico\":\"dependentes\"}",
+            "{\"operacao\":\"FORA_DE_ESCOPO\",\"candidatos\":[],\"precisaEsclarecimento\":false,\"topico\":\"dependentes\"}",
+            // campo de escolha fechada com valor fora das opções
+            "{\"operacao\":\"PROPOR_VALORES\",\"candidatos\":[{\"campo\":\"uf\",\"valor\":\"RJ\",\"trechoOrigem\":\"goiania\"}],\"precisaEsclarecimento\":false}",
+            "{\"operacao\":\"PROPOR_VALORES\",\"candidatos\":[{\"campo\":\"situacaoMoradia\",\"valor\":\"Alugada\",\"trechoOrigem\":\"alugado\"}],\"precisaEsclarecimento\":false}"})
+    void ajudaEOpcoesForaDoContratoSaoDescartadas(String conteudo) throws Exception {
+        servir(conteudo);
+
+        assertThatThrownBy(() -> interpretador().interpretar(PEDIDO_COM_CATALOGOS))
+                .isInstanceOfSatisfying(FalhaInterpretacaoException.class, e -> assertThat(e.categoria()).isEqualTo(RESPOSTA_INVALIDA));
+    }
+
+    @Test
+    void municipioNormalizadoComUfEMoradiaDoCatalogoSaoAceitos() throws Exception {
+        servir("""
+                {"operacao":"PROPOR_VALORES","candidatos":[
+                  {"campo":"municipio","valor":"Goiânia","trechoOrigem":"goiania"},
+                  {"campo":"uf","valor":"GO","trechoOrigem":"goiania"},
+                  {"campo":"situacaoMoradia","valor":"ALUGADA","trechoOrigem":"alugado"}],"precisaEsclarecimento":false}""");
+
+        var resultado = interpretador().interpretar(PEDIDO_COM_CATALOGOS);
+
+        assertThat(resultado.candidatos()).extracting("campo", "valor").containsExactly(
+                org.assertj.core.groups.Tuple.tuple("municipio", "Goiânia"),
+                org.assertj.core.groups.Tuple.tuple("uf", "GO"),
+                org.assertj.core.groups.Tuple.tuple("situacaoMoradia", "ALUGADA"));
+    }
+
+    @Test
+    void oPedidoLevaOpcoesETopicosENaoOsMandaQuandoNaoHa() throws Exception {
+        servir("""
+                {"operacao":"FORA_DE_ESCOPO","candidatos":[],"precisaEsclarecimento":false}""");
+        servir("""
+                {"operacao":"FORA_DE_ESCOPO","candidatos":[],"precisaEsclarecimento":false}""");
+
+        interpretador().interpretar(PEDIDO_COM_CATALOGOS);
+        interpretador().interpretar(PEDIDO);
+
+        var comCatalogos = json.readTree(servidor.takeRequest().getBody().readUtf8());
+        var dados = json.readTree(comCatalogos.path("messages").path(1).path("content").asText());
+        assertThat(dados.path("campos").path(1).path("opcoes").toString()).isEqualTo("[\"GO\",\"SP\"]");
+        assertThat(dados.path("topicos").path(0).path("id").asText()).isEqualTo("dependentes");
+        assertThat(comCatalogos.path("messages").path(0).path("content").asText()).contains("AJUDA").contains("opcoes");
+
+        var simples = json.readTree(servidor.takeRequest().getBody().readUtf8());
+        var dadosSimples = json.readTree(simples.path("messages").path(1).path("content").asText());
+        assertThat(dadosSimples.has("topicos")).isFalse();
+    }
+
+    @Test
+    void aRecusaNomeiaARegraViolada() throws Exception {
+        servir("""
+                {"operacao":"PROPOR_VALORES","candidatos":[
+                  {"campo":"cpf","valor":"529.982.247-25","trechoOrigem":"Goiânia"}],"precisaEsclarecimento":false}""");
+
+        assertThatThrownBy(() -> interpretador().interpretar(PEDIDO))
+                .isInstanceOfSatisfying(FalhaInterpretacaoException.class, e -> assertThat(e.detalhe()).isEqualTo("campo fora da lista do turno"));
+    }
+
+    @Test
+    void oDetalheDaRecusaNuncaCitaOTextoDaPessoaNemOConteudoDoModelo() throws Exception {
+        servir("""
+                {"operacao":"PROPOR_VALORES","candidatos":[
+                  {"campo":"municipio","valor":"Goiânia","trechoOrigem":"Brasília"}],"precisaEsclarecimento":false}""");
+        servir("isto não é json com Moro em Goiânia");
+
+        assertThatThrownBy(() -> interpretador().interpretar(PEDIDO))
+                .isInstanceOfSatisfying(FalhaInterpretacaoException.class, e -> assertThat(e.detalhe())
+                        .startsWith("trecho de origem que não está na resposta")
+                        .doesNotContain("Brasília").doesNotContain("Goiânia"));
+        assertThatThrownBy(() -> interpretador().interpretar(PEDIDO))
+                .isInstanceOfSatisfying(FalhaInterpretacaoException.class, e -> assertThat(e.detalhe())
+                        .startsWith("JSON fora do formato")
+                        .doesNotContain("Moro em Goiânia").doesNotContain("isto não é json"));
+    }
 }

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ServicoInterpretacao {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ServicoInterpretacao.class);
+
     private final InterpretadorRespostas interpretador;
     private final PropriedadesLlm llm;
     private final ServicoEventos eventos;
@@ -25,6 +27,9 @@ public class ServicoInterpretacao {
             return new Interpretacao.Sucesso(resultado);
         } catch (FalhaInterpretacaoException falha) {
             registrar(falha.categoria().name(), inicio);
+            if (falha.detalhe() != null) {
+                LOG.info("interpretação recusada: {}", falha.detalhe());
+            }
             return new Interpretacao.Falha(falha.categoria());
         }
     }

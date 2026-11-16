@@ -15,13 +15,24 @@ public class FalhaInterpretacaoException extends RuntimeException {
     }
 
     private final Categoria categoria;
+    private final String detalhe;
 
     public FalhaInterpretacaoException(Categoria categoria) {
+        this(categoria, null);
+    }
+
+    /** O detalhe nomeia a regra do contrato que falhou. Nunca carrega texto da pessoa nem da resposta do modelo. */
+    public FalhaInterpretacaoException(Categoria categoria, String detalhe) {
         super(categoria.name());
         this.categoria = categoria;
+        this.detalhe = detalhe;
     }
 
     public Categoria categoria() {
         return categoria;
+    }
+
+    public String detalhe() {
+        return detalhe;
     }
 }
