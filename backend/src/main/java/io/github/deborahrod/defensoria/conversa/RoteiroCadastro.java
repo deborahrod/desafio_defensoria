@@ -104,6 +104,7 @@ public class RoteiroCadastro {
                     .perguntar("Qual número podemos usar?")
                     .ajuda("Informe com DDD. Pode ser um número compartilhado.")
                     .validar(Validadores::telefone, 20)
+                    .alternativas(ausencia("SEM_TELEFONE", "Não tenho telefone", MotivoAusencia.NAO_POSSUI))
                     .quando(rascunho -> rascunho.tem(FORMA_CONTATO, "TELEFONE")),
             Pergunta.de(EMAIL, CONTATO, "E-mail", TipoEntrada.EMAIL)
                     .perguntar("Qual é o e-mail?")

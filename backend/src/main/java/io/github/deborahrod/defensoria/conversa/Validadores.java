@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /** Regras de cada campo. Todo valor aceito sai normalizado e passa de novo pela mesma regra. */
@@ -24,6 +25,18 @@ final class Validadores {
     private static final Pattern VALOR_COM_VIRGULA = Pattern.compile("\\d+(,\\d{1,2})?");
     private static final Pattern VALOR_COM_PONTO = Pattern.compile("\\d+\\.\\d{1,2}");
     private static final BigDecimal VALOR_MAXIMO = new BigDecimal("9999999999999.99");
+
+    /** DDDs em uso no Brasil. */
+    private static final Set<String> DDDS_VALIDOS = Set.of(
+            "11", "12", "13", "14", "15", "16", "17", "18", "19",
+            "21", "22", "24", "27", "28",
+            "31", "32", "33", "34", "35", "37", "38",
+            "41", "42", "43", "44", "45", "46", "47", "48", "49",
+            "51", "53", "54", "55",
+            "61", "62", "63", "64", "65", "66", "67", "68", "69",
+            "71", "73", "74", "75", "77", "79",
+            "81", "82", "83", "84", "85", "86", "87", "88", "89",
+            "91", "92", "93", "94", "95", "96", "97", "98", "99");
 
     private Validadores() {
     }
@@ -77,9 +90,15 @@ final class Validadores {
 
     static Validacao cpf(String bruto, ContextoResposta contexto) {
         var digitos = bruto.replaceAll("\\D", "");
+        if (digitos.length() != 11) {
+            return recusada("O CPF tem 11 números, e você informou " + digitos.length() + ". Confira e tente de novo.");
+        }
+        if (digitos.chars().distinct().count() == 1) {
+            return recusada("CPF inválido: os 11 números são iguais. Confira o documento.");
+        }
         return Cpf.valido(digitos)
                 ? aceita(digitos)
-                : recusada("Esse CPF não é válido. Confira os 11 números.");
+                : recusada("CPF inválido: os dígitos verificadores não conferem. Confira os números.");
     }
 
     static Validacao telefone(String bruto, ContextoResposta contexto) {
@@ -93,9 +112,28 @@ final class Validadores {
         if (limpo.startsWith("+")) {
             digitos = digitos.substring(2);
         }
-        var comDdd = digitos.length() == 10 || digitos.length() == 11;
-        if (!comDdd || digitos.charAt(0) == '0' || digitos.charAt(1) == '0') {
-            return recusada("Informe o telefone com DDD, por exemplo (62) 91234-5678.");
+        return telefoneNacional(digitos);
+    }
+
+    /** Telefone brasileiro: DDD existente, celular com 11 dígitos começando em 9, fixo com 10 começando em 2 a 5. */
+    private static Validacao telefoneNacional(String digitos) {
+        if (digitos.length() != 10 && digitos.length() != 11) {
+            return recusada("Informe o telefone com DDD: 10 números para fixo ou 11 para celular, "
+                    + "por exemplo (62) 91234-5678.");
+        }
+        if (!DDDS_VALIDOS.contains(digitos.substring(0, 2))) {
+            return recusada("O DDD " + digitos.substring(0, 2) + " não existe. Confira os dois primeiros números.");
+        }
+        var numero = digitos.substring(2);
+        if (digitos.length() == 11 && numero.charAt(0) != '9') {
+            return recusada("Celular tem 11 números e o primeiro depois do DDD é 9, por exemplo (62) 91234-5678.");
+        }
+        if (digitos.length() == 10 && "2345".indexOf(numero.charAt(0)) < 0) {
+            return recusada("Telefone fixo tem 10 números e começa com 2, 3, 4 ou 5 depois do DDD. "
+                    + "Se for celular, use 11 números com 9 na frente.");
+        }
+        if (numero.chars().distinct().count() == 1) {
+            return recusada("Esse número parece inválido: todos os dígitos são iguais.");
         }
         return aceita(digitos);
     }
