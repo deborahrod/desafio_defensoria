@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import type { useConversa } from '../conversa/useConversa.ts'
 import estilos from './ChatCadastro.module.css'
-import ComprovanteCadastro from './ComprovanteCadastro.tsx'
 import EntradaConversa from './EntradaConversa.tsx'
-import RevisaoFinal from './RevisaoFinal.tsx'
 
-/** Coluna da conversa: mensagens, a pergunta atual (ou a revisão final) e os avisos de envio. */
+/** Coluna da conversa: mensagens, a pergunta atual e os avisos de envio. A conferência final tem tela própria. */
 export default function ChatCadastro({ conversa }: { conversa: ReturnType<typeof useConversa> }) {
   const { estado, transcricao, enviando, falha, recusa, encerrada } = conversa
   const [confirmandoSaida, setConfirmandoSaida] = useState(false)
 
   const pergunta = estado?.proximaPergunta
-  const confirmado = estado?.estado === 'CONFIRMADO' && estado.comprovante
 
   return (
     <section className={estilos.chat} aria-label="Conversa do cadastro">
-      {estado && !confirmado && (
+      {estado && (
         <p className={estilos.modo}>
           {estado.modoInteracao === 'ASSISTIDO_POR_IA'
             ? 'Assistência por IA ativa: o que você escrever sobre município e ocupação é interpretado por um serviço externo.'
@@ -40,10 +37,6 @@ export default function ChatCadastro({ conversa }: { conversa: ReturnType<typeof
             Começar um novo cadastro
           </button>
         </div>
-      ) : confirmado ? (
-        <ComprovanteCadastro comprovante={estado.comprovante!} desabilitado={enviando} aoEncerrar={conversa.cancelar} />
-      ) : estado?.estado === 'EM_REVISAO' ? (
-        <RevisaoFinal estado={estado} desabilitado={enviando} aoConfirmar={conversa.confirmar} />
       ) : pergunta ? (
         <EntradaConversa key={`${pergunta.campo}-${estado?.versao}`} pergunta={pergunta} desabilitado={enviando} aoEnviar={conversa.enviar} />
       ) : null}
@@ -63,7 +56,7 @@ export default function ChatCadastro({ conversa }: { conversa: ReturnType<typeof
         </div>
       )}
 
-      {!encerrada && !confirmado && (
+      {!encerrada && (
         <div className={estilos.saida}>
           {confirmandoSaida ? (
             <>

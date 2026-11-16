@@ -27,7 +27,7 @@ test('os componentes usam tokens do tema e não cores soltas', () => {
     '../componentes/ChatCadastro.module.css',
     '../componentes/EntradaConversa.module.css',
     '../componentes/PainelRespostas.module.css',
-    '../componentes/RevisaoFinal.module.css',
+    '../componentes/TelaConferencia.module.css',
     '../componentes/PaginaInicial.module.css',
     '../componentes/EtapasProgresso.module.css',
     '../componentes/Cadastro.module.css',

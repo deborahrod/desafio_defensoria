@@ -59,14 +59,17 @@ test('dá para editar uma resposta no meio do preenchimento, sem perder a pergun
   expect(screen.getByLabelText('Sua resposta')).toBeInTheDocument()
 })
 
-test('na revisão final o painel continua editável e o botão de confirmar fica na conversa', async () => {
-  const usuario = await comecar(revisao(8))
+test('na conferência final o painel e a conversa saem de cena e só a tela de conferência confirma', async () => {
+  fetchSimulado.mockResolvedValueOnce(json(revisao(8), 201))
+  render(<Cadastro />)
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Começar' }))
+  await screen.findByRole('heading', { name: 'Revise seus dados' })
 
   expect(screen.getByRole('heading', { name: 'Revise seus dados' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Confirmar cadastro' })).toBeInTheDocument()
-  expect(screen.getAllByRole('button', { name: /^Editar / })).toHaveLength(3)
-  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
-  expect(screen.getByText('Qual número podemos usar?')).toBeInTheDocument()
+  expect(screen.queryByRole('complementary', { name: 'Suas respostas' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Conversa do cadastro' })).not.toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: /^Corrigir / })).toHaveLength(3)
 })
 
 test('com uma escolha pendente do servidor as edições ficam bloqueadas', async () => {

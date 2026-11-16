@@ -15,7 +15,7 @@ async function abrirRevisao(estadoInicial = revisao(8)) {
   return usuario
 }
 
-test('o resumo mostra seções, valores explícitos, pendências e Editar em cada item', async () => {
+test('o resumo mostra seções, valores explícitos, pendências e Corrigir em cada item', async () => {
   await abrirRevisao()
 
   const identificacao = within(screen.getByRole('region', { name: 'Identificação' }))
@@ -23,17 +23,17 @@ test('o resumo mostra seções, valores explícitos, pendências e Editar em cad
   expect(identificacao.getByText('Não possuo CPF')).toBeInTheDocument()
   const contato = within(screen.getByRole('region', { name: 'Contato' }))
   expect(contato.getByText('(62) 91234-5678')).toBeInTheDocument()
-  expect(screen.getAllByRole('button', { name: /^Editar / })).toHaveLength(3)
+  expect(screen.getAllByRole('button', { name: /^Corrigir / })).toHaveLength(3)
   const pendencias = within(screen.getByRole('note', { name: 'Informações pendentes' }))
   expect(pendencias.getByText('Data de nascimento: Não soube informar')).toBeInTheDocument()
   expect(screen.getByText(/não significa que o atendimento foi aprovado/)).toBeInTheDocument()
 })
 
-test('Editar abre a entrada do tipo certo e envia só o campo escolhido com a versão revisada', async () => {
+test('Corrigir abre a entrada do tipo certo e envia só o campo escolhido com a versão revisada', async () => {
   const usuario = await abrirRevisao()
   fetchSimulado.mockResolvedValueOnce(json(revisao(9)))
 
-  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
   expect(screen.getByText('Qual número podemos usar?')).toBeInTheDocument()
   await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '(62) 99876-5432{Enter}')
 
@@ -45,11 +45,11 @@ test('Editar abre a entrada do tipo certo e envia só o campo escolhido com a ve
   await waitFor(() => expect(screen.queryByLabelText('Nova resposta: Telefone')).not.toBeInTheDocument())
 })
 
-test('Editar funciona só com o teclado', async () => {
+test('Corrigir funciona só com o teclado', async () => {
   const usuario = await abrirRevisao()
   fetchSimulado.mockResolvedValueOnce(json(revisao(9)))
 
-  screen.getByRole('button', { name: 'Editar Tem CPF para informar' }).focus()
+  screen.getByRole('button', { name: 'Corrigir Tem CPF para informar' }).focus()
   await usuario.keyboard('{Enter}')
   const opcao = screen.getByRole('button', { name: 'Não possuo CPF', hidden: false })
   opcao.focus()
@@ -58,24 +58,24 @@ test('Editar funciona só com o teclado', async () => {
   await waitFor(() => expect(corpoEnviado(1)).toEqual({ versao: 8, valor: null, opcao: 'NAO_POSSUI' }))
 })
 
-test('correção recusada pelo servidor mostra o motivo e mantém a edição aberta', async () => {
+test('correção recusada pelo servidor mostra o motivo e mantém o editor aberto', async () => {
   const usuario = await abrirRevisao()
   fetchSimulado.mockResolvedValueOnce(
     json({ codigo: 'RESPOSTA_INVALIDA', mensagem: 'Informe o telefone com DDD, por exemplo (62) 91234-5678.', campo: 'telefone' }, 400),
   )
 
-  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
   await usuario.type(screen.getByLabelText('Nova resposta: Telefone'), '123{Enter}')
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Informe o telefone com DDD')
   expect(screen.getByLabelText('Nova resposta: Telefone')).toBeInTheDocument()
 })
 
-test('Cancelar edição fecha a edição sem chamar o servidor', async () => {
+test('Cancelar correção fecha o editor sem chamar o servidor', async () => {
   const usuario = await abrirRevisao()
 
-  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
-  await usuario.click(screen.getByRole('button', { name: 'Cancelar edição' }))
+  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Cancelar correção' }))
 
   expect(screen.queryByLabelText('Nova resposta: Telefone')).not.toBeInTheDocument()
   expect(fetchSimulado).toHaveBeenCalledTimes(1)
@@ -101,7 +101,7 @@ test('correção que pede confirmação para apagar dados volta para a pergunta 
     }),
   )
 
-  await usuario.click(screen.getByRole('button', { name: 'Editar Tem CPF para informar' }))
+  await usuario.click(screen.getByRole('button', { name: 'Corrigir Tem CPF para informar' }))
   await usuario.click(screen.getByRole('button', { name: 'Sim, vou informar' }))
 
   expect(await screen.findByRole('button', { name: 'Sim, alterar' })).toBeInTheDocument()

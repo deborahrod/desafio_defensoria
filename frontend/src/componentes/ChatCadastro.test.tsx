@@ -112,7 +112,7 @@ test('resposta recusada pelo servidor aparece na conversa e a pergunta continua'
 })
 
 test('texto digitado é exibido como texto, sem interpretar HTML', async () => {
-  fetchSimulado.mockResolvedValueOnce(json(estado(0, NOME), 201)).mockResolvedValueOnce(json(estado(1, null)))
+  fetchSimulado.mockResolvedValueOnce(json(estado(0, NOME), 201)).mockResolvedValueOnce(json(estado(1, NOME)))
   const usuario = userEvent.setup()
   render(<Cadastro />)
   await usuario.click(screen.getByRole('button', { name: 'Começar' }))

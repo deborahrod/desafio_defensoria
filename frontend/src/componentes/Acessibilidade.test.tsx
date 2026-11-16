@@ -50,7 +50,7 @@ test('pergunta de texto com ajuda e mensagem de erro não tem violações', asyn
 test('revisão com correção aberta não tem violações de acessibilidade', async () => {
   const { usuario, tela } = await comecarCom(revisao(8))
   await screen.findByRole('heading', { name: 'Revise seus dados' })
-  await usuario.click(screen.getByRole('button', { name: 'Editar Telefone' }))
+  await usuario.click(screen.getByRole('button', { name: 'Corrigir Telefone' }))
 
   expect(await violacoes(tela.container)).toEqual([])
 })
@@ -96,10 +96,10 @@ test('toda a jornada, da abertura ao comprovante, funciona só com o teclado', a
   await waitFor(() => expect(screen.getByLabelText('Sua resposta')).toHaveFocus())
   await usuario.keyboard('Ana Fictícia{Enter}')
 
-  // Revisão: o foco vai ao título, e o Tab alcança Editar no painel de respostas.
+  // Revisão: o foco vai ao título, e o Tab alcança Corrigir na tela de conferência.
   const titulo = await screen.findByRole('heading', { name: 'Revise seus dados' })
   await waitFor(() => expect(titulo).toHaveFocus())
-  await tabAte(usuario, 'Editar Telefone')
+  await tabAte(usuario, 'Corrigir Telefone')
   await usuario.keyboard('{Enter}')
   await waitFor(() => expect(screen.getByLabelText('Nova resposta: Telefone')).toHaveFocus())
   await usuario.keyboard('(62) 99999-0000{Enter}')
