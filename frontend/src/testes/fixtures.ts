@@ -124,3 +124,28 @@ export function prepararFetch() {
     document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
   })
 }
+
+export const RELATO: ProximaPergunta = {
+  campo: 'relato',
+  texto: 'Se preferir, conte em poucas linhas onde você mora, o que faz e quem mora com você.',
+  ajuda: 'Não conte detalhes do seu caso: só esses dados. Máximo de 400 caracteres.',
+  tipoEntrada: 'RELATO',
+  opcoes: [{ id: 'PULAR_RELATO', rotulo: 'Prefiro responder pergunta por pergunta' }],
+  tamanhoMaximo: 400,
+}
+
+export const CONFIRMAR_ENTENDIMENTO: ProximaPergunta = {
+  campo: 'municipio',
+  texto: 'Entendi assim: Município ou localidade: Anápolis; Ocupação: Pedreiro (trabalho informal). Está certo?',
+  ajuda: null,
+  tipoEntrada: 'ESCOLHA',
+  opcoes: [
+    { id: 'CONFIRMAR', rotulo: 'Sim, está certo' },
+    { id: 'MANTER', rotulo: 'Não, vou responder de novo' },
+  ],
+  tamanhoMaximo: null,
+  itens: [
+    { rotulo: 'Município ou localidade', valor: 'Anápolis' },
+    { rotulo: 'Ocupação', valor: 'Pedreiro (trabalho informal)' },
+  ],
+}

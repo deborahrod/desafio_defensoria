@@ -2,6 +2,7 @@ export type TipoEntrada =
   | 'ESCOLHA'
   | 'LISTA'
   | 'TEXTO'
+  | 'RELATO'
   | 'DATA'
   | 'CPF'
   | 'TELEFONE'
@@ -30,6 +31,13 @@ export interface ProximaPergunta {
   tipoEntrada: TipoEntrada
   opcoes: Opcao[]
   tamanhoMaximo: number | null
+  /** Dados que a interpretação entendeu, para a pessoa conferir. Só aparece na confirmação. */
+  itens?: ItemConfirmacao[]
+}
+
+export interface ItemConfirmacao {
+  rotulo: string
+  valor: string
 }
 
 export interface ItemResumo {

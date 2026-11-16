@@ -32,9 +32,12 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
   const raiz = useRef<HTMLDivElement>(null)
   const idCampo = useId()
   const idAjuda = useId()
+  const idContador = useId()
   const { tipoEntrada: tipo, opcoes } = pergunta
   const porBotoes = tipo === 'ESCOLHA'
   const porLista = tipo === 'LISTA'
+  const relato = tipo === 'RELATO'
+  const descritoPor = [pergunta.ajuda ? idAjuda : '', relato ? idContador : ''].filter(Boolean).join(' ') || undefined
 
   useEffect(() => {
     raiz.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
@@ -52,7 +55,16 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
       return
     }
     aoEnviar({ valor: limpo }, exibir(tipo, limpo))
-    setValor('')
+    // O relato fica no campo: se for recusado, a pessoa corrige em vez de reescrever tudo.
+    if (!relato) setValor('')
+  }
+
+  // Em texto longo o Enter quebra a linha; Ctrl+Enter envia.
+  const enviarComAtalho = (evento: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (evento.key === 'Enter' && (evento.ctrlKey || evento.metaKey)) {
+      evento.preventDefault()
+      evento.currentTarget.form?.requestSubmit()
+    }
   }
 
   return (
@@ -61,6 +73,16 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
         <p id={idAjuda} className={estilos.ajuda}>
           {pergunta.ajuda}
         </p>
+      )}
+
+      {pergunta.itens && pergunta.itens.length > 0 && (
+        <ul className={estilos.itens} aria-label="Dados entendidos">
+          {pergunta.itens.map((item) => (
+            <li key={item.rotulo}>
+              <span className={estilos.itemRotulo}>{item.rotulo}:</span> {item.valor}
+            </li>
+          ))}
+        </ul>
       )}
 
       {porBotoes && (
@@ -88,6 +110,18 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
                   </option>
                 ))}
               </select>
+            ) : relato ? (
+              <textarea
+                id={idCampo}
+                className={`${estilos.campo} ${estilos.relato}`}
+                rows={4}
+                maxLength={pergunta.tamanhoMaximo ?? undefined}
+                value={valor}
+                disabled={desabilitado}
+                aria-describedby={descritoPor}
+                onChange={(e) => setValor(e.target.value)}
+                onKeyDown={enviarComAtalho}
+              />
             ) : (
               <input
                 id={idCampo}
@@ -97,7 +131,7 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
                 {...ATRIBUTOS[tipo]}
                 value={valor}
                 disabled={desabilitado}
-                aria-describedby={pergunta.ajuda ? idAjuda : undefined}
+                aria-describedby={descritoPor}
                 onChange={(e) => setValor(e.target.value)}
               />
             )}
@@ -105,6 +139,11 @@ export default function EntradaConversa({ pergunta, desabilitado, aoEnviar, rotu
               Enviar
             </button>
           </div>
+          {relato && (
+            <p id={idContador} className={estilos.contador}>
+              {valor.length} de {pergunta.tamanhoMaximo} caracteres. Ctrl+Enter envia.
+            </p>
+          )}
         </form>
       )}
 

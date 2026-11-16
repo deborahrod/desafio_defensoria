@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
 import { expect, test } from 'vitest'
-import { NOME, PARA_QUEM, confirmado, estado, fetchSimulado, json, prepararFetch, revisao } from '../testes/fixtures.ts'
+import { CONFIRMAR_ENTENDIMENTO, NOME, PARA_QUEM, RELATO, confirmado, estado, fetchSimulado, json, prepararFetch, revisao } from '../testes/fixtures.ts'
 import Cadastro from './Cadastro.tsx'
 
 prepararFetch()
@@ -118,4 +118,18 @@ test('página inicial e área do cadastro (etapas, conversa e painel) não têm 
   const { container } = render(<Cadastro />)
   expect(await violacoes(container)).toEqual([])
   expect(screen.getByRole('heading', { name: 'Quem pode ser atendido' })).toBeInTheDocument()
+})
+
+test('tela do relato livre não tem violações de acessibilidade', async () => {
+  const { tela } = await comecarCom(estado(3, RELATO))
+  await screen.findByLabelText('Sua resposta')
+
+  expect(await violacoes(tela.container)).toEqual([])
+})
+
+test('confirmação com a lista de dados entendidos não tem violações de acessibilidade', async () => {
+  const { tela } = await comecarCom({ ...estado(4, CONFIRMAR_ENTENDIMENTO), estado: 'AGUARDANDO_ESCLARECIMENTO' })
+  await screen.findByRole('list', { name: 'Dados entendidos' })
+
+  expect(await violacoes(tela.container)).toEqual([])
 })

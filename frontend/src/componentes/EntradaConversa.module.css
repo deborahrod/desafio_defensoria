@@ -84,3 +84,31 @@
     flex-direction: column;
   }
 }
+
+.relato {
+  min-height: 7rem;
+  padding: var(--espaco-3);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.contador {
+  color: var(--cor-texto);
+  font-size: var(--texto-pequeno);
+}
+
+.itens {
+  display: grid;
+  gap: var(--espaco-1);
+  margin: 0;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-left: 4px solid var(--cor-verde);
+  border-radius: var(--raio-botao);
+  background: var(--cor-fundo-suave);
+  list-style: none;
+}
+
+.itemRotulo {
+  color: var(--cor-texto-forte);
+  font-weight: var(--peso-medio);
+}
