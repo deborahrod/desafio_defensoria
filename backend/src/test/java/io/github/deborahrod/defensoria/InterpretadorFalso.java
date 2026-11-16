@@ -37,6 +37,12 @@ public class InterpretadorFalso implements InterpretadorRespostas {
         comportamento = pedido -> resultado;
     }
 
+    /** O modelo aponta um tópico do catálogo de ajuda. */
+    public void ajuda(String topico) {
+        var resultado = new ResultadoInterpretacao(Operacao.AJUDA, List.of(), false, topico);
+        comportamento = pedido -> resultado;
+    }
+
     /** A chamada fica parada até o teste liberar, para simular um provedor lento. */
     public void bloquearAte(CountDownLatch entrou, CountDownLatch liberar, ResultadoInterpretacao resultado) {
         comportamento = pedido -> {

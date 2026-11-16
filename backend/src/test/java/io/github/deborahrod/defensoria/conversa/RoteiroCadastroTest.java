@@ -198,4 +198,44 @@ class RoteiroCadastroTest {
             }
         }
     }
+
+    @Test
+    void relatoSoApareceQuandoAPessoaEscolheUsarIa() {
+        var comChave = new RoteiroCadastro(new PropriedadesLlm("chave", null, null, null, 0));
+
+        assertThat(comChave.de(RELATO, rascunho)).isEmpty();
+        rascunho.informar(AVISO_IA, RoteiroCadastro.ESTRUTURADO, AGORA);
+        assertThat(comChave.de(RELATO, rascunho)).isEmpty();
+        rascunho.informar(AVISO_IA, RoteiroCadastro.USAR_IA, AGORA);
+        assertThat(comChave.de(RELATO, rascunho)).isPresent();
+    }
+
+    @Test
+    void relatoNaoApareceNaRevisaoENuncaSemChave() {
+        assertThat(roteiro.de(RELATO, rascunho)).isEmpty();
+        var comChave = new RoteiroCadastro(new PropriedadesLlm("chave", null, null, null, 0));
+        rascunho.informar(AVISO_IA, RoteiroCadastro.USAR_IA, AGORA);
+
+        assertThat(comChave.de(RELATO, rascunho).orElseThrow().noResumo()).isFalse();
+    }
+
+    @Test
+    void osCamposDoRelatoSaoOsSocioeconomicosELocalizacaoBasicaENuncaDadosDeIdentificacao() {
+        var noRelato = roteiro.todas().filter(Pergunta::participaDoRelato).map(Pergunta::campo).toList();
+
+        assertThat(noRelato).containsExactly(
+                MUNICIPIO, UF, OCUPACAO, RENDA, QUANTIDADE_MEMBROS, DEPENDENTES, SITUACAO_MORADIA);
+        assertThat(noRelato).doesNotContain(NOME, NASCIMENTO, CPF, TELEFONE, EMAIL, LOGRADOURO, CEP);
+    }
+
+    @Test
+    void escolhasFechadasEntramNoPedidoComSuasOpcoes() {
+        var moradia = roteiro.todas().filter(p -> p.campo() == SITUACAO_MORADIA).findFirst().orElseThrow();
+        var uf = roteiro.todas().filter(p -> p.campo() == UF).findFirst().orElseThrow();
+        var ocupacao = roteiro.todas().filter(p -> p.campo() == OCUPACAO).findFirst().orElseThrow();
+
+        assertThat(moradia.escolhaFechada()).isTrue();
+        assertThat(uf.idsDeOpcoes(rascunho)).hasSize(27).doesNotContain("NAO_SEI");
+        assertThat(ocupacao.escolhaFechada()).isFalse();
+    }
 }

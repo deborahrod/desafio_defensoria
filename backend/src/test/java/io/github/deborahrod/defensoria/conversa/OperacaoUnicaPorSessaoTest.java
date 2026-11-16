@@ -24,7 +24,7 @@ class OperacaoUnicaPorSessaoTest extends TesteIntegracao {
 
     private static final List<RespostaEntrada> ATE_A_IA = List.of(
             opcao("PROPRIA_PESSOA"), valor("Ana Fictícia"), opcao("PULAR"), opcao("NAO_SEI"),
-            opcao("NAO_POSSUI"), opcao("INDISPONIVEL"), opcao("USAR_IA"));
+            opcao("NAO_POSSUI"), opcao("INDISPONIVEL"), opcao("USAR_IA"), opcao("PULAR_RELATO"));
 
     @Test
     void enquantoUmaInferenciaEstaEmAndamentoOutraRespostaDaSessaoEhRecusadaSemChamarOModelo() throws Exception {
@@ -37,7 +37,7 @@ class OperacaoUnicaPorSessaoTest extends TesteIntegracao {
                 Operacao.PROPOR_VALORES, List.of(new Candidato("municipio", "Goiânia", "Goiânia")), false));
         var pool = Executors.newSingleThreadExecutor();
         try {
-            var primeira = pool.submit(() -> participante.responderValor("Moro em Goiânia"));
+            var primeira = pool.submit(() -> participante.responderValor("Goiânia"));
             assertThat(entrou.await(5, TimeUnit.SECONDS)).isTrue();
 
             var outro = new ParticipanteApi(novoNavegador());

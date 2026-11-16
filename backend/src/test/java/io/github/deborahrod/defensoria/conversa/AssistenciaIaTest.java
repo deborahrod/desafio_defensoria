@@ -49,6 +49,8 @@ class AssistenciaIaTest extends TesteIntegracao {
     private ParticipanteApi noMunicipioComIa() throws Exception {
         var participante = noAviso();
         participante.responderOpcao("USAR_IA").andExpect(status().isOk());
+        // O relato livre vem logo depois da escolha da IA. Estes testes exercitam as perguntas uma a uma.
+        participante.responderOpcao("PULAR_RELATO").andExpect(status().isOk());
         return participante;
     }
 
@@ -80,7 +82,8 @@ class AssistenciaIaTest extends TesteIntegracao {
 
         participante.responderOpcao("USAR_IA")
                 .andExpect(jsonPath("$.modoInteracao").value("ASSISTIDO_POR_IA"))
-                .andExpect(jsonPath("$.proximaPergunta.campo").value("municipio"))
+                .andExpect(jsonPath("$.proximaPergunta.campo").value("relato"))
+                .andExpect(jsonPath("$.proximaPergunta.tipoEntrada").value("RELATO"))
                 .andExpect(content().string(not(containsString("Assistência por IA"))));
     }
 
@@ -129,7 +132,7 @@ class AssistenciaIaTest extends TesteIntegracao {
         var pedido = interpretador.pedidos.getFirst();
         assertThat(pedido.resposta()).isEqualTo(FRASE);
         assertThat(pedido.pergunta()).isEqualTo("Em qual município ou localidade você está?");
-        assertThat(pedido.campos()).extracting("id").containsExactly("municipio", "ocupacao");
+        assertThat(pedido.campos()).extracting("id").containsExactly("municipio", "uf", "ocupacao");
         assertThat(pedido.toString()).doesNotContain("Ana Fictícia").doesNotContain("chave-de-teste");
     }
 
@@ -150,7 +153,7 @@ class AssistenciaIaTest extends TesteIntegracao {
         var participante = noMunicipioComIa();
         interpretador.propor("municipio", "Goiânia", "Goiânia");
 
-        participante.responderValor("Moro em Goiânia")
+        participante.responderValor("Goiânia")
                 .andExpect(jsonPath("$.estado").value("EM_PREENCHIMENTO"))
                 .andExpect(jsonPath("$.proximaPergunta.campo").value("uf"))
                 .andExpect(jsonPath("$.resumo[*].itens[?(@.campo=='municipio')].valor").value("Goiânia"));
@@ -274,6 +277,10 @@ class AssistenciaIaTest extends TesteIntegracao {
 
         participante.responderValor("Sou autônoma, mas já morei em Brasília")
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("AGUARDANDO_ESCLARECIMENTO"))
+                .andExpect(jsonPath("$.proximaPergunta.itens.length()").value(1))
+                .andExpect(jsonPath("$.proximaPergunta.itens[0].rotulo").value("Ocupação"));
+        participante.responderOpcao("CONFIRMAR")
                 .andExpect(jsonPath("$.proximaPergunta.campo").value("renda"))
                 .andExpect(jsonPath("$.resumo[*].itens[?(@.campo=='municipio')].valor").value("Goiânia"))
                 .andExpect(jsonPath("$.resumo[*].itens[?(@.campo=='ocupacao')].valor").value("autônoma"));
@@ -287,8 +294,8 @@ class AssistenciaIaTest extends TesteIntegracao {
         var mensagemId = UUID.randomUUID();
         var versao = participante.versao;
 
-        participante.responder(mensagemId, versao, "\"Moro em Goiânia\"", "null").andExpect(status().isOk());
-        participante.responder(mensagemId, versao, "\"Moro em Goiânia\"", "null")
+        participante.responder(mensagemId, versao, "\"Goiânia\"", "null").andExpect(status().isOk());
+        participante.responder(mensagemId, versao, "\"Goiânia\"", "null")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.proximaPergunta.campo").value("uf"));
 
