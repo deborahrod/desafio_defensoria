@@ -167,6 +167,15 @@ public class RoteiroCadastro {
             Pergunta.de(ENDERECO_FIXO, LOCALIZACAO, "Tem endereço fixo", TipoEntrada.ESCOLHA)
                     .perguntar("Você tem endereço fixo?", "A pessoa tem endereço fixo?")
                     .alternativas(valor(SIM, "Sim"), valor(NAO, "Não")),
+            Pergunta.de(CEP, LOCALIZACAO, "CEP", TipoEntrada.CEP)
+                    .perguntar("Sabe o CEP?")
+                    .ajuda("Com o CEP eu busco rua, bairro e município em um serviço público de endereços "
+                            + "(ViaCEP ou BrasilAPI). Só o CEP é enviado. Você confere o resultado e, se não "
+                            + "achar, preenche o endereço à mão.")
+                    .validar(Validadores::cep, 9)
+                    .comoOpcional()
+                    .alternativas(PULAR)
+                    .quando(RoteiroCadastro::comEnderecoFixo),
             Pergunta.de(LOGRADOURO, LOCALIZACAO, "Logradouro", TipoEntrada.TEXTO)
                     .perguntar("Qual é a rua, avenida ou logradouro?")
                     .validar(Validadores.texto(200), 200)
@@ -186,12 +195,6 @@ public class RoteiroCadastro {
                     .perguntar("Tem complemento?")
                     .ajuda("Por exemplo: quadra, lote, bloco ou apartamento.")
                     .validar(Validadores.texto(100), 100)
-                    .comoOpcional()
-                    .alternativas(PULAR)
-                    .quando(RoteiroCadastro::comEnderecoFixo),
-            Pergunta.de(CEP, LOCALIZACAO, "CEP", TipoEntrada.CEP)
-                    .perguntar("Sabe o CEP?")
-                    .validar(Validadores::cep, 9)
                     .comoOpcional()
                     .alternativas(PULAR)
                     .quando(RoteiroCadastro::comEnderecoFixo),

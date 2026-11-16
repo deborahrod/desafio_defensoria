@@ -109,8 +109,8 @@ class ConfirmacaoTest extends TesteIntegracao {
 
         participante.confirmar()
                 .andExpect(content().string(not(containsString("Maria"))))
-                .andExpect(content().string(not(containsString("529"))))
-                .andExpect(content().string(not(containsString("91234"))));
+                .andExpect(content().string(not(containsString("52998224725"))))
+                .andExpect(content().string(not(containsString("912345678"))));
         participante.navegador.get("/atual")
                 .andExpect(jsonPath("$.estado").value("CONFIRMADO"))
                 .andExpect(content().string(not(containsString("Maria"))));

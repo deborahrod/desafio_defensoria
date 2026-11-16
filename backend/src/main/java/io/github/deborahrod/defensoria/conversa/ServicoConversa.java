@@ -15,6 +15,7 @@ import io.github.deborahrod.defensoria.integracao.FalhaInterpretacaoException.Ca
 import io.github.deborahrod.defensoria.integracao.Interpretacao;
 import io.github.deborahrod.defensoria.integracao.NormalizacaoDeTexto;
 import io.github.deborahrod.defensoria.integracao.PedidoInterpretacao;
+import io.github.deborahrod.defensoria.integracao.ResultadoCep;
 import io.github.deborahrod.defensoria.integracao.PedidoInterpretacao.CampoPermitido;
 import io.github.deborahrod.defensoria.integracao.PropriedadesLlm;
 import io.github.deborahrod.defensoria.integracao.ResultadoInterpretacao;
@@ -42,6 +43,11 @@ public class ServicoConversa {
     static final String RELATO_ENVIADO = "ENVIADO";
 
     private static final int LIMITE_RELATO = 400;
+
+    static final String CEP_NAO_ENCONTRADO =
+            "Não encontrei esse CEP nas bases consultadas. Vou seguir com o preenchimento manual do endereço.";
+    static final String CEP_INDISPONIVEL =
+            "Não consegui consultar o CEP agora. Vou seguir com o preenchimento manual do endereço.";
 
     private static final String SAUDACAO =
             "Vou fazer algumas perguntas, uma de cada vez. Você poderá corrigir qualquer resposta "
@@ -165,9 +171,40 @@ public class ServicoConversa {
                 pergunta.texto(RoteiroCadastro.paraOutraPessoa(rascunho)), texto, campos, ajuda.topicos()));
     }
 
+    /** Se esta resposta é um CEP válido para a pergunta atual, devolve os oito dígitos. A consulta é feita fora de transação. */
+    @Transactional(readOnly = true)
+    public Optional<String> prepararConsultaCep(UUID sessaoId, UUID mensagemId, int versao, RespostaEntrada entrada) {
+        var sessao = sessao(sessaoId);
+        if (sessao.getEstado() != EstadoSessao.EM_PREENCHIMENTO
+                || entrada.opcao() != null
+                || entrada.valor() == null
+                || mensagens.existsById(new MensagemProcessada.Chave(sessaoId, mensagemId))) {
+            return Optional.empty();
+        }
+        var rascunho = rascunho(sessaoId);
+        if (versao != rascunho.getVersao()
+                || roteiro.proxima(rascunho).filter(p -> p.campo() == Campo.CEP).isEmpty()) {
+            return Optional.empty();
+        }
+        return Validadores.cep(entrada.valor(), contexto(rascunho, relogio.instant())) instanceof Validacao.Aceita aceito
+                ? Optional.of(aceito.valor())
+                : Optional.empty();
+    }
+
     @Transactional
     public EstadoConversa responder(
             UUID sessaoId, UUID mensagemId, int versao, RespostaEntrada entrada, Optional<Interpretacao> interpretacao) {
+        return responder(sessaoId, mensagemId, versao, entrada, interpretacao, Optional.empty());
+    }
+
+    @Transactional
+    public EstadoConversa responder(
+            UUID sessaoId,
+            UUID mensagemId,
+            int versao,
+            RespostaEntrada entrada,
+            Optional<Interpretacao> interpretacao,
+            Optional<ResultadoCep> endereco) {
         var sessao = sessao(sessaoId);
         var rascunho = rascunho(sessaoId);
         // Reenvio da mesma mensagem: devolve o estado atual sem aplicar de novo.
@@ -179,7 +216,7 @@ public class ServicoConversa {
 
         var avisos = List.<String>of();
         switch (sessao.getEstado()) {
-            case EM_PREENCHIMENTO -> avisos = responderPergunta(sessao, rascunho, entrada, interpretacao, agora);
+            case EM_PREENCHIMENTO -> avisos = responderPergunta(sessao, rascunho, entrada, interpretacao, endereco, agora);
             case AGUARDANDO_ESCLARECIMENTO -> responderEsclarecimento(rascunho, entrada, agora);
             default -> throw new EstadoInvalidoException("Não há pergunta aguardando resposta.");
         }
@@ -243,6 +280,7 @@ public class ServicoConversa {
             RascunhoCadastro rascunho,
             RespostaEntrada entrada,
             Optional<Interpretacao> interpretacao,
+            Optional<ResultadoCep> endereco,
             Instant agora) {
         var pergunta = roteiro.proxima(rascunho)
                 .orElseThrow(() -> new EstadoInvalidoException("Não há pergunta aguardando resposta."));
@@ -260,6 +298,9 @@ public class ServicoConversa {
         var resolucao = pergunta.resolver(entrada, contexto(rascunho, agora));
         if (resolucao instanceof Resolucao.Invalida invalida) {
             throw new RespostaInvalidaException(pergunta.campo(), invalida.mensagem());
+        }
+        if (pergunta.campo() == Campo.CEP && endereco.isPresent() && resolucao instanceof Resolucao.Valor cep) {
+            return aplicarConsultaCep(rascunho, cep.valor(), endereco.get(), agora);
         }
         aplicar(rascunho, pergunta.campo(), resolucao, agora);
         if (pergunta.campo() == Campo.AVISO_IA && rascunho.tem(Campo.AVISO_IA, RoteiroCadastro.USAR_IA)) {
@@ -313,6 +354,50 @@ public class ServicoConversa {
         rascunho.pedirEsclarecimento(
                 new Esclarecimento(Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO, valores, Map.of(), List.of()), agora);
         return List.of();
+    }
+
+    /**
+     * O endereço do CEP só entra no cadastro depois que a pessoa confere. Se o CEP não existe ou os provedores
+     * estão fora, o CEP digitado fica registrado e o endereço segue manual: nada é inventado.
+     */
+    private List<String> aplicarConsultaCep(RascunhoCadastro rascunho, String cep, ResultadoCep resultado, Instant agora) {
+        if (!(resultado instanceof ResultadoCep.Encontrado encontrado)) {
+            rascunho.informar(Campo.CEP, cep, agora);
+            return List.of(resultado instanceof ResultadoCep.NaoEncontrado ? CEP_NAO_ENCONTRADO : CEP_INDISPONIVEL);
+        }
+        var endereco = encontrado.endereco();
+        var valores = new LinkedHashMap<String, String>();
+        valores.put(Campo.CEP.id(), cep);
+        propor(valores, rascunho, Campo.LOGRADOURO, endereco.logradouro(), agora);
+        propor(valores, rascunho, Campo.BAIRRO, endereco.bairro(), agora);
+        var divergente = diverge(rascunho, Campo.MUNICIPIO, endereco.municipio()) || diverge(rascunho, Campo.UF, endereco.uf());
+        if (divergente || rascunho.valor(Campo.MUNICIPIO).isEmpty()) {
+            propor(valores, rascunho, Campo.MUNICIPIO, endereco.municipio(), agora);
+        }
+        if (divergente || rascunho.valor(Campo.UF).isEmpty()) {
+            propor(valores, rascunho, Campo.UF, endereco.uf(), agora);
+        }
+        rascunho.pedirEsclarecimento(
+                new Esclarecimento(Esclarecimento.Tipo.CONFIRMAR_ENDERECO, valores, Map.of(), List.of()), agora);
+        return List.of();
+    }
+
+    /** Inclui o valor do provedor só se passar pelas mesmas regras do campo. */
+    private void propor(Map<String, String> valores, RascunhoCadastro rascunho, Campo campo, String valor, Instant agora) {
+        if (valor == null || valor.isBlank()) {
+            return;
+        }
+        var pergunta = roteiro.todas().filter(p -> p.campo() == campo).findFirst().orElseThrow();
+        var entrada = pergunta.escolhaFechada() ? RespostaEntrada.opcao(valor) : RespostaEntrada.valor(valor);
+        if (pergunta.resolver(entrada, contexto(rascunho, agora)) instanceof Resolucao.Valor aceito) {
+            valores.put(campo.id(), aceito.valor());
+        }
+    }
+
+    static boolean diverge(RascunhoCadastro rascunho, Campo campo, String doCep) {
+        return rascunho.valor(campo)
+                .map(atual -> !NormalizacaoDeTexto.normalizar(atual).equals(NormalizacaoDeTexto.normalizar(doCep)))
+                .orElse(false);
     }
 
     /** Dúvida em pergunta sem extração: só o verbete do catálogo responde. Qualquer outra coisa volta como erro do campo. */
@@ -413,12 +498,21 @@ public class ServicoConversa {
 
     private void responderEsclarecimento(RascunhoCadastro rascunho, RespostaEntrada entrada, Instant agora) {
         var pendente = rascunho.esclarecimento().orElseThrow();
+        var endereco = pendente.tipo() == Esclarecimento.Tipo.CONFIRMAR_ENDERECO;
         if (MontadorEstado.CONFIRMAR.equals(entrada.opcao())) {
             pendente.valores().forEach((id, valor) -> rascunho.informar(campo(id), valor, agora));
             pendente.ausencias().forEach(
                     (id, motivo) -> rascunho.registrarAusencia(campo(id), MotivoAusencia.valueOf(motivo), agora));
             pendente.afetados().forEach(id -> rascunho.limpar(campo(id), agora));
-        } else if (!MontadorEstado.MANTER.equals(entrada.opcao())) {
+            if (endereco) {
+                removerInvalidados(rascunho, agora);
+            }
+        } else if (MontadorEstado.MANTER.equals(entrada.opcao())) {
+            if (endereco) {
+                // Recusou o endereço do CEP: o CEP fica sem uso e o endereço é preenchido à mão.
+                rascunho.registrarAusencia(Campo.CEP, MotivoAusencia.OPCIONAL_NAO_PREENCHIDO, agora);
+            }
+        } else {
             throw new RespostaInvalidaException((String) null, "Escolha uma das opções apresentadas.");
         }
         rascunho.encerrarEsclarecimento(agora);

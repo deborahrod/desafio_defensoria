@@ -12,6 +12,7 @@ public record Esclarecimento(
 
     public enum Tipo {
         CONFIRMAR_LIMPEZA,
-        CONFIRMAR_INTERPRETACAO
+        CONFIRMAR_INTERPRETACAO,
+        CONFIRMAR_ENDERECO
     }
 }

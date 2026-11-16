@@ -45,12 +45,16 @@ public abstract class TesteIntegracao {
     protected InterpretadorFalso interpretador;
 
     @Autowired
+    protected ConsultaCepFalsa cep;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     @BeforeEach
     void comecarDoZero() {
         relogio.reiniciar();
         interpretador.reiniciar();
+        cep.reiniciar();
         jdbc.execute("""
                 TRUNCATE confirmacao_cadastro, declaracao_socioeconomica, representacao_declarada,
                     pessoa_cadastro, mensagem_processada, rascunho_cadastro, sessao_cadastro, evento_tecnico
@@ -74,6 +78,12 @@ public abstract class TesteIntegracao {
         @Primary
         InterpretadorFalso interpretadorFalso() {
             return new InterpretadorFalso();
+        }
+
+        @Bean
+        @Primary
+        ConsultaCepFalsa consultaCepFalsa() {
+            return new ConsultaCepFalsa();
         }
     }
 }

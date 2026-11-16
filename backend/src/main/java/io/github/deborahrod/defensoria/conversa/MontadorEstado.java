@@ -114,6 +114,9 @@ public class MontadorEstado {
         if (pendente.tipo() == Esclarecimento.Tipo.CONFIRMAR_INTERPRETACAO) {
             return confirmarInterpretacao(pendente, rascunho);
         }
+        if (pendente.tipo() == Esclarecimento.Tipo.CONFIRMAR_ENDERECO) {
+            return confirmarEndereco(pendente, rascunho);
+        }
         var alterado = Stream.concat(pendente.valores().keySet().stream(), pendente.ausencias().keySet().stream())
                 .findFirst()
                 .orElseThrow();
@@ -130,6 +133,45 @@ public class MontadorEstado {
                 List.of(new Opcao(CONFIRMAR, "Sim, alterar"), new Opcao(MANTER, "Não, manter como está")),
                 null,
                 List.of());
+    }
+
+    /** Mostra o endereço achado pelo CEP. Se município ou UF divergem do informado, pergunta qual vale. */
+    private ProximaPergunta confirmarEndereco(Esclarecimento pendente, RascunhoCadastro rascunho) {
+        var perguntas = roteiro.todas().filter(p -> pendente.valores().containsKey(p.campo().id())).toList();
+        var itens = perguntas.stream()
+                .filter(p -> p.campo() != Campo.CEP)
+                .map(p -> new EstadoConversa.ItemConfirmacao(
+                        p.rotulo(), p.exibir(pendente.valores().get(p.campo().id()), rascunho)))
+                .toList();
+        var cep = pendente.valores().get(Campo.CEP.id());
+        var cepComMascara = cep.substring(0, 5) + "-" + cep.substring(5);
+        var divergente = pendente.valores().entrySet().stream()
+                .filter(e -> e.getKey().equals(Campo.MUNICIPIO.id()) || e.getKey().equals(Campo.UF.id()))
+                .anyMatch(e -> ServicoConversa.diverge(rascunho, Campo.deId(e.getKey()).orElseThrow(), e.getValue()));
+        var texto = divergente
+                ? "O CEP " + cepComMascara + " é de " + localidade(pendente.valores())
+                        + ", diferente do que você informou (" + localidade(atuais(rascunho))
+                        + "). Qual vale? Se usar o CEP, troco município e estado."
+                : "Encontrei este endereço para o CEP " + cepComMascara + ": "
+                        + itens.stream().map(i -> i.rotulo() + ": " + i.valor()).collect(Collectors.joining("; "))
+                        + ". Está certo?";
+        var opcoes = divergente
+                ? List.of(new Opcao(CONFIRMAR, "Usar o endereço do CEP"), new Opcao(MANTER, "Manter o que informei"))
+                : List.of(new Opcao(CONFIRMAR, "Sim, está certo"), new Opcao(MANTER, "Não, vou preencher à mão"));
+        return new ProximaPergunta(Campo.CEP.id(), texto, null, TipoEntrada.ESCOLHA, opcoes, null, itens);
+    }
+
+    private static java.util.Map<String, String> atuais(RascunhoCadastro rascunho) {
+        var atuais = new java.util.HashMap<String, String>();
+        rascunho.valor(Campo.MUNICIPIO).ifPresent(v -> atuais.put(Campo.MUNICIPIO.id(), v));
+        rascunho.valor(Campo.UF).ifPresent(v -> atuais.put(Campo.UF.id(), v));
+        return atuais;
+    }
+
+    private static String localidade(java.util.Map<String, String> valores) {
+        var municipio = valores.getOrDefault(Campo.MUNICIPIO.id(), "município não informado");
+        var uf = valores.get(Campo.UF.id());
+        return uf == null ? municipio : municipio + ", " + uf;
     }
 
     private ProximaPergunta confirmarInterpretacao(Esclarecimento pendente, RascunhoCadastro rascunho) {
