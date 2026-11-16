@@ -13,3 +13,8 @@ frontend/dist/
 *.iml
 .DS_Store
 *.log
+
+# Testes de navegador
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/

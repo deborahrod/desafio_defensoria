@@ -1,0 +1,12 @@
+{
+  "name": "cadastro-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Testes de navegador da jornada e da borda (nginx), contra o Docker Compose em execução",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}
