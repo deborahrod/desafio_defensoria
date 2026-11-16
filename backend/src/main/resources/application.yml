@@ -34,6 +34,13 @@ cadastro:
     timeout: ${LLM_TIMEOUT_SECONDS:15}s
     max-output-tokens: ${LLM_MAX_OUTPUT_TOKENS:350}
 
+  cep:
+    timeout: ${CEP_TIMEOUT_MS:3000}ms
+    viacep-url: ${CEP_VIACEP_URL:https://viacep.com.br/ws}
+    brasilapi-url: ${CEP_BRASILAPI_URL:https://brasilapi.com.br/api/cep/v2}
+    cache-maximo: ${CEP_CACHE_MAXIMO:500}
+    cache-validade: ${CEP_CACHE_VALIDADE_HORAS:6}h
+
 server:
   port: 8081
   error:
