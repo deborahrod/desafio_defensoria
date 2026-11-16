@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +22,10 @@ public class LimitadorRequisicoes {
 
     private static final Duration JANELA = Duration.ofMinutes(1);
     private static final Duration INATIVIDADE_MAXIMA = Duration.ofHours(1);
+
+    /** Origens acompanhadas ao mesmo tempo, mais um balde para as excedentes. Passando disso, as novas o dividem. */
+    static final int MAXIMO_DE_ORIGENS = 10_000;
+    private static final String ORIGENS_EXCEDENTES = "(excedentes)";
 
     /** Marca uma operação em andamento. Fechar libera a sessão para a próxima. */
     public interface Operacao extends AutoCloseable {
@@ -40,11 +45,18 @@ public class LimitadorRequisicoes {
     private final Map<UUID, Janela> porSessao = new ConcurrentHashMap<>();
     private final Map<String, Janela> porOrigem = new ConcurrentHashMap<>();
     private final Set<UUID> emAndamento = ConcurrentHashMap.newKeySet();
+    private final int maximoDeOrigens;
 
+    @Autowired
     public LimitadorRequisicoes(PropriedadesLimites limites, Clock relogio, ServicoEventos eventos) {
+        this(limites, relogio, eventos, MAXIMO_DE_ORIGENS);
+    }
+
+    LimitadorRequisicoes(PropriedadesLimites limites, Clock relogio, ServicoEventos eventos, int maximoDeOrigens) {
         this.limites = limites;
         this.relogio = relogio;
         this.eventos = eventos;
+        this.maximoDeOrigens = maximoDeOrigens;
     }
 
     /**
@@ -67,7 +79,7 @@ public class LimitadorRequisicoes {
     /** Devolve quantos segundos esperar, ou zero se a origem pode seguir. */
     public long permitirOrigem(String origem) {
         var agora = relogio.instant();
-        var janela = porOrigem.computeIfAbsent(origem, chave -> new Janela());
+        var janela = janelaDaOrigem(origem, agora);
         synchronized (janela) {
             janela.ultimoUso = agora;
             podar(janela, agora);
@@ -77,6 +89,28 @@ public class LimitadorRequisicoes {
             janela.instantes.addLast(agora);
             return 0;
         }
+    }
+
+    /**
+     * O mapa não cresce sem limite, mesmo que a chave venha de quem faz as requisições. Cheio, primeiro
+     * descarta as origens que não pedem há mais de uma janela, que já não têm nada a contar. Se ainda
+     * estiver cheio, as origens novas dividem um balde só, sujeito ao mesmo teto.
+     */
+    private Janela janelaDaOrigem(String origem, Instant agora) {
+        var existente = porOrigem.get(origem);
+        if (existente != null) {
+            return existente;
+        }
+        if (porOrigem.size() >= maximoDeOrigens) {
+            var ocioso = agora.minus(JANELA);
+            porOrigem.values().removeIf(janela -> janela.ultimoUso.isBefore(ocioso));
+        }
+        var chave = porOrigem.size() >= maximoDeOrigens ? ORIGENS_EXCEDENTES : origem;
+        return porOrigem.computeIfAbsent(chave, k -> new Janela());
+    }
+
+    int origensAcompanhadas() {
+        return porOrigem.size();
     }
 
     public void descartarInativos() {
