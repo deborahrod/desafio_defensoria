@@ -9,7 +9,7 @@ cd frontend && npm run lint && npm test && npm run build
 
 No PowerShell, use `.\mvnw.cmd` no lugar de `./mvnw`.
 
-Resultado da última execução completa: **backend com 413 testes, 4 ignorados** (os que dependem de chave real), e **frontend com 103 testes**, todos passando.
+Resultado da última execução completa: **backend com 413 testes, 4 ignorados** (os que dependem de chave real), **frontend com 103 testes** e **5 testes de navegador**, todos passando.
 
 ## Estratégia
 
@@ -21,6 +21,7 @@ Resultado da última execução completa: **backend com 413 testes, 4 ignorados*
 | CEP | `ConsultaCepFalsa` nos testes de fluxo. `MockWebServer` (dois servidores) nos testes dos provedores |
 | Relógio | `RelogioDeTeste` controlável, para expiração e competência |
 | Frontend | Vitest com Testing Library, `fetch` simulado e axe-core |
+| Navegador | Playwright contra o Docker Compose no ar, pela interface e pelo nginx, como o usuário e como um cliente hostil |
 
 Os dados dos testes são inventados.
 
@@ -75,6 +76,40 @@ Os dados dos testes são inventados.
 
 O axe roda sem a regra de contraste, porque o jsdom não calcula estilos. O contraste das cores do tema foi calculado e todo texto passa de 4,5:1.
 
+## Testes de navegador (`e2e/`)
+
+Rodam contra o stack completo (banco, API e nginx), sem chave de IA e sem mocks.
+
+| Arquivo | O que cobre |
+|---|---|
+| `jornada.spec.ts` | Da página inicial ao comprovante: perguntas, ausência de nascimento, conferência em tela cheia sem conversa nem painel, selo "Ausência declarada", correção de telefone barrada no cliente (DDD inexistente) e depois aceita, confirmação, foco no título, comprovante e encerramento. Falha se a política de conteúdo do nginx bloquear algo da aplicação. Usa um CPF válido novo a cada execução, porque o Compose guarda os dados |
+| `seguranca.spec.ts` | Cabeçalhos de segurança e versão do nginx oculta, `401` sem sessão com `no-store` e sem cabeçalho duplicado pelo proxy, `403` sem token CSRF e a regressão do `X-Forwarded-For`: com o cabeçalho forjado a cada requisição, o teto por origem tem de valer |
+
+O endereço pelo CEP fica de fora, de propósito: dependeria de serviços públicos na internet. Esse fluxo é coberto no backend com servidores simulados.
+
+A regressão do `X-Forwarded-For` foi verificada de duas formas: passa com a configuração atual e **falha** (0 requisições limitadas) com o nginx e o filtro anteriores à correção.
+
+Como rodar localmente, com o Compose no ar e o Google Chrome instalado. A jornada faz mais respostas por minuto do que o teto padrão de 10, por isso os tetos sobem só para o teste:
+
+```bash
+LIMITE_RESPOSTAS_POR_MINUTO=100 LIMITE_REQUISICOES_POR_ORIGEM_POR_MINUTO=100 docker compose up --build -d --wait
+cd e2e && npm ci && E2E_LIMITE_ORIGEM=100 npx playwright test
+```
+
+`E2E_BASE_URL` muda o endereço testado (padrão `http://localhost:8080`) e `E2E_LIMITE_ORIGEM` informa o teto por origem do Compose (padrão 120). Com `CI=1` o Playwright usa o Chromium dele (`npx playwright install chromium`) em vez do Chrome instalado.
+
+## Integração contínua
+
+`.github/workflows/ci.yml` roda a cada push em `main` e em todo pull request, com três jobs independentes:
+
+| Job | O que roda |
+|---|---|
+| Backend | `./mvnw -B -ntp verify` (Java 21). Os testes de integração sobem o PostgreSQL pelo Testcontainers, no Docker do runner |
+| Frontend | `npm ci`, `npm run lint`, `npm test` e `npm run build` (Node 22) |
+| Navegador | `cp .env.example .env`, `docker compose up --build -d --wait`, e os testes de `e2e/` com o Chromium do Playwright. Se falhar, publica os logs do Compose e o relatório do Playwright |
+
+A CI só tem permissão de leitura do repositório, não usa segredos (o cadastro roda sem chave de IA) e cancela a execução anterior da mesma branch quando chega uma nova.
+
 ## Teste de chamada real à IA
 
 `InterpretadorRealTest` chama o provedor configurado com texto fictício e só roda se `LLM_API_KEY` estiver no ambiente. Os demais testes esperam o ambiente **sem** chave, então carregue o `.env` apenas para esse teste:
@@ -86,7 +121,7 @@ cd backend && ./mvnw test -Dtest=InterpretadorRealTest
 
 ## O que não é coberto
 
-- Não há suíte automatizada de navegador de ponta a ponta. A jornada completa foi conferida manualmente no navegador, contra a API real.
+- O fluxo de CEP real não entra nos testes de navegador, porque dependeria de serviços externos. Ele foi conferido à mão e é coberto no backend com servidores simulados.
+- Os testes de navegador usam um só navegador (Chromium) e um só tamanho de tela. Responsividade e contraste de cores foram conferidos à mão.
 - Não há teste de carga nem medição de capacidade. Os limites de uso são hipóteses.
 - Os testes de CEP usam servidores simulados. O formato real dos dois provedores foi conferido manualmente com um CEP público, mas sem teste automatizado contra a internet.
-- O contraste de cores não é medido pelos testes automatizados.

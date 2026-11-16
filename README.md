@@ -1,5 +1,7 @@
 # Cadastro de pessoa assistida
 
+[![CI](https://github.com/deborahrod/desafio_defensoria/actions/workflows/ci.yml/badge.svg)](https://github.com/deborahrod/desafio_defensoria/actions/workflows/ci.yml)
+
 Protótipo de cadastro por conversa guiada para a **Defensoria Pública do Estado de Goiás**. A pessoa responde uma pergunta por vez, confere tudo numa tela de conferência e só então confirma. O backend em Java conduz o fluxo, valida e grava. Uma IA pode ajudar a entender texto livre, mas só propõe: quem decide é o servidor, e a pessoa sempre confere.
 
 > **Demonstração técnica com dados fictícios.** O cadastro e o comprovante não têm validade oficial, não criam atendimento nem processo e não se integram a sistemas da Defensoria. Não use dados de pessoas reais.
@@ -94,7 +96,16 @@ cd backend && ./mvnw verify
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-O backend usa PostgreSQL real em contêiner (precisa de Docker), e os provedores externos são simulados. O frontend usa Vitest, Testing Library e axe-core. Detalhes em [docs/testes.md](docs/testes.md).
+O backend usa PostgreSQL real em contêiner (precisa de Docker), e os provedores externos são simulados. O frontend usa Vitest, Testing Library e axe-core.
+
+Há também testes de navegador (Playwright) que percorrem a jornada completa e conferem a borda (nginx) contra o Compose em execução. A CI do GitHub roda os três conjuntos a cada push e pull request. Para rodar os de navegador localmente, com o Compose no ar e o Google Chrome instalado:
+
+```bash
+LIMITE_RESPOSTAS_POR_MINUTO=100 LIMITE_REQUISICOES_POR_ORIGEM_POR_MINUTO=100 docker compose up --build -d --wait
+cd e2e && npm ci && E2E_LIMITE_ORIGEM=100 npx playwright test
+```
+
+Detalhes em [docs/testes.md](docs/testes.md).
 
 ## Limitações
 

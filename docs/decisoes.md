@@ -97,7 +97,13 @@ Registro curto das escolhas que mais moldaram o projeto. Cada uma diz o contexto
 - **Decisão.** O nginx envia uma CSP que só aceita a própria origem, sem script inline nem `eval`. As fontes Roboto são empacotadas e o único afrouxamento é `'unsafe-inline'` em estilos, porque o Material UI injeta `<style>`.
 - **Consequência.** Reduz o impacto de uma injeção de HTML. Trocar o Material UI por CSS próprio, ou usar nonce, permitiria remover o afrouxamento.
 
-## D19. A conversa não é persistida no navegador
+## D19. CI com teste de navegador contra o Compose
+
+- **Contexto.** Uma falha real, o `X-Forwarded-For` forjado, passou pelos testes porque eles verificavam a função e não o caminho completo pelo nginx. Alguns commits intermediários também ficaram sem passar isolados.
+- **Decisão.** Um fluxo de CI com três jobs (backend, frontend e navegador). O de navegador sobe o Compose de verdade, percorre a jornada pela interface e ataca a borda como um cliente hostil. A regressão do cabeçalho forjado foi verificada para falhar com a configuração antiga.
+- **Consequência.** Erros de integração entre nginx, API e interface aparecem a cada push. Em troca, o job leva alguns minutos a mais e o fluxo de CEP real fica de fora, por depender da internet.
+
+## D20. A conversa não é persistida no navegador
 
 - **Decisão.** O estado vive só em memória, sem `localStorage`.
 - **Consequência.** Menos dado pessoal no dispositivo. Recarregar a página perde a conversa e **Começar** abre uma nova sessão.
